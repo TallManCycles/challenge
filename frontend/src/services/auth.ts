@@ -1,15 +1,15 @@
-import type { 
-  LoginRequest, 
-  RegisterRequest, 
-  AuthResponse, 
-  User, 
+import type {
+  LoginRequest,
+  RegisterRequest,
+  AuthResponse,
+  User,
   ChangePasswordRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
   UpdateProfileRequest
 } from '../types/auth'
 
-const API_BASE_URL = 'http://localhost:5123/api' // Backend API URL
+const API_BASE_URL = `${import.meta.env.VITE_APP_API_ENDPOINT || 'http://localhost:5000'}/api`
 
 class AuthService {
   private token: string | null = null
@@ -41,7 +41,7 @@ class AuthService {
 
       // Decode the payload (second part)
       const payload = JSON.parse(atob(parts[1]))
-      
+
       // Check if token has expiry claim
       if (!payload.exp) {
         return false // If no expiry, consider it valid
@@ -57,11 +57,11 @@ class AuthService {
   }
 
   private async makeRequest<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ class AuthService {
 
     try {
       const response = await fetch(url, config)
-      
+
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'An error occurred' }))
         throw new Error(error.message || `HTTP error! status: ${response.status}`)

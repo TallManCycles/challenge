@@ -68,7 +68,26 @@ This is a full-stack application with separate frontend and backend projects:
    npm run dev
    ```
 
-4. **Access the application**
+4. **Configure environment variables**
+   
+   **Frontend** (`frontend/.env`):
+   ```env
+   VITE_APP_API_ENDPOINT=http://localhost:5000
+   ```
+   
+   **Backend** (configured in `appsettings.Development.json`):
+   ```json
+   {
+     "Frontend": {
+       "AllowedOrigins": [
+         "http://localhost:5173",
+         "http://localhost:5123"
+       ]
+     }
+   }
+   ```
+
+5. **Access the application**
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:5000
    - API Documentation: http://localhost:5000/swagger
@@ -145,6 +164,57 @@ The application uses JWT-based authentication:
 ## 📚 API Documentation
 
 When running the backend, visit `/swagger` to explore the interactive API documentation with all available endpoints, request/response schemas, and the ability to test endpoints directly.
+
+## 🚀 Deployment
+
+### Environment Configuration
+
+The application is designed for easy deployment with environment-specific configuration:
+
+**Frontend Environment Variables** (`.env`):
+```env
+# Development
+VITE_APP_API_ENDPOINT=http://localhost:5000
+
+# Production
+VITE_APP_API_ENDPOINT=https://your-api-domain.com
+```
+
+**Backend Configuration** (`appsettings.Production.json`):
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Your production connection string"
+  },
+  "Frontend": {
+    "AllowedOrigins": [
+      "https://your-frontend-domain.com",
+      "https://www.your-frontend-domain.com"
+    ]
+  },
+  "Auth": {
+    "JwtKey": "Your-Secure-Production-JWT-Key-Here"
+  }
+}
+```
+
+### Production Build Commands
+
+**Frontend**:
+```bash
+cd frontend
+npm run build    # Creates dist/ folder for deployment
+```
+
+**Backend**:
+```bash
+cd backend
+dotnet publish -c Release -o publish/
+```
+
+### Docker Support
+
+Both frontend and backend can be containerized for easy deployment to cloud platforms.
 
 ## 🤝 Contributing
 

@@ -38,11 +38,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 // Add CORS for frontend integration
+var allowedOrigins = builder.Configuration.GetSection("Frontend:AllowedOrigins").Get<string[]>()
+    ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:3000") // Vite dev server ports
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -84,3 +87,6 @@ app.MapGet("/api/health", () => new { Status = "Healthy", Timestamp = DateTime.U
     .WithOpenApi();
 
 app.Run();
+
+// Make Program class accessible for testing
+public partial class Program { }

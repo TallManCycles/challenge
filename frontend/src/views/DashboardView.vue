@@ -7,7 +7,7 @@
           <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
           <nav class="flex space-x-6">
             <router-link to="/dashboard" class="text-white hover:text-gray-300 transition-colors">Challenges</router-link>
-            <a href="#" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</a>
+            <router-link to="/challenges/create" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</router-link>
             <router-link to="/settings" class="text-gray-400 hover:text-gray-300 transition-colors">Settings</router-link>
           </nav>
         </div>
@@ -20,12 +20,38 @@
       </div>
     </header>
 
+    <!-- Loading State -->
+    <div v-if="loading" class="max-w-7xl mx-auto px-6 py-8">
+      <div class="animate-pulse">
+        <div class="h-8 bg-gray-700 rounded w-64 mb-2"></div>
+        <div class="h-4 bg-gray-700 rounded w-96 mb-8"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div v-for="i in 3" :key="i" class="bg-gray-800 rounded-lg p-6">
+            <div class="h-6 bg-gray-700 rounded mb-2"></div>
+            <div class="h-4 bg-gray-700 rounded mb-6"></div>
+            <div class="h-20 bg-gray-700 rounded"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-6 py-8">
+    <main v-else class="max-w-7xl mx-auto px-6 py-8">
       <!-- Page Title -->
-      <div class="mb-8">
-        <h2 class="text-3xl font-bold text-white mb-2">My Challenges</h2>
-        <p class="text-gray-400">Track your progress and see how you're performing</p>
+      <div class="mb-8 flex items-center justify-between">
+        <div>
+          <h2 class="text-3xl font-bold text-white mb-2">My Challenges</h2>
+          <p class="text-gray-400">Track your progress and see how you're performing</p>
+        </div>
+        <router-link
+          to="/challenges/create"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          <span>Create Challenge</span>
+        </router-link>
       </div>
 
       <!-- Active Challenges -->
@@ -37,135 +63,155 @@
           </span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- No active challenges -->
+        <div v-if="activeChallenges.length === 0" class="text-center py-12">
+          <div class="text-gray-500 mb-4">
+            <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          </div>
+          <h4 class="text-xl font-medium text-gray-300 mb-2">No Active Challenges</h4>
+          <p class="text-gray-500 mb-6">Create or join a challenge to get started!</p>
+          <router-link
+            to="/challenges/create"
+            class="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            <span>Create Your First Challenge</span>
+          </router-link>
+        </div>
+
+        <!-- Active challenges grid -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div 
             v-for="challenge in activeChallenges" 
             :key="challenge.id"
-            class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors"
+            class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer"
+            @click="viewChallenge(challenge.id)"
           >
             <!-- Challenge Header -->
             <div class="flex items-start justify-between mb-4">
-              <div>
+              <div class="flex-1">
                 <h4 class="text-lg font-semibold text-white mb-1">{{ challenge.title }}</h4>
-                <p class="text-gray-400 text-sm">{{ challenge.description }}</p>
+                <p class="text-gray-400 text-sm">{{ challenge.description || 'No description' }}</p>
               </div>
               <span 
-                :class="`bg-${challenge.color}-600 text-white px-2 py-1 rounded text-xs font-medium`"
+                class="px-2 py-1 rounded-full text-xs font-medium"
+                :class="getTypeColorClass(challenge.challengeTypeName)"
               >
-                #{{ challenge.rank }}
+                {{ challenge.challengeTypeName }}
               </span>
             </div>
 
-            <!-- Progress Circle -->
-            <div class="flex items-center justify-center mb-4">
-              <div class="relative w-24 h-24">
-                <svg class="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
-                  <!-- Background circle -->
-                  <path
-                    class="text-gray-700"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    fill="none"
-                    d="M18 2.0845
-                      a 15.9155 15.9155 0 0 1 0 31.831
-                      a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                  <!-- Progress circle -->
-                  <path
-                    :class="`text-${challenge.color}-500`"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    fill="none"
-                    stroke-linecap="round"
-                    :stroke-dasharray="`${challenge.progress}, 100`"
-                    d="M18 2.0845
-                      a 15.9155 15.9155 0 0 1 0 31.831
-                      a 15.9155 15.9155 0 0 1 0 -31.831"
-                  />
-                </svg>
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <span class="text-sm font-medium text-gray-400">{{ challenge.progress }}%</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Progress Info -->
+            <!-- Challenge Stats -->
             <div class="mb-4">
-              <div class="flex justify-between text-sm text-gray-400 mb-1">
-                <span>Progress</span>
-                <span>{{ challenge.current }}/{{ challenge.target }} {{ challenge.unit }}</span>
+              <div class="flex items-center justify-between text-sm mb-2">
+                <span class="text-gray-400">Participants</span>
+                <span class="text-white font-medium">{{ challenge.participantCount }}</span>
               </div>
-              <div class="w-full bg-gray-700 rounded-full h-2">
-                <div 
-                  :class="`bg-${challenge.color}-500 h-2 rounded-full transition-all duration-300`"
-                  :style="`width: ${challenge.progress}%`"
-                ></div>
+              <div class="flex items-center justify-between text-sm mb-2">
+                <span class="text-gray-400">Created by</span>
+                <span class="text-white font-medium">{{ challenge.createdByUsername }}</span>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-gray-400">Ends</span>
+                <span class="text-white font-medium">{{ formatDate(challenge.endDate) }}</span>
               </div>
             </div>
 
-            <!-- View Details Button -->
-            <button 
-              :class="`w-full bg-${challenge.color}-600 hover:bg-${challenge.color}-700 text-white py-2 px-4 rounded-lg font-medium transition-colors`"
-            >
-              View Details
-            </button>
+            <!-- Participation Status -->
+            <div class="flex items-center justify-between">
+              <span 
+                v-if="challenge.isUserParticipating"
+                class="px-3 py-1 bg-green-600 text-white rounded-full text-xs font-medium"
+              >
+                Participating
+              </span>
+              <button
+                v-else
+                @click.stop="joinChallenge(challenge.id)"
+                class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-medium transition-colors"
+              >
+                Join Challenge
+              </button>
+              
+              <div class="text-right text-xs text-gray-400">
+                {{ getDaysRemaining(challenge.endDate) }} days left
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Previous Challenges -->
+      <!-- All Challenges -->
       <section>
         <div class="flex items-center justify-between mb-6">
-          <h3 class="text-xl font-semibold text-white">Previous Challenges</h3>
-          <span class="text-gray-400 text-sm">{{ previousChallenges.length }} completed</span>
+          <h3 class="text-xl font-semibold text-white">All Challenges</h3>
+          <span class="bg-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+            {{ allChallenges.length }} total
+          </span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- No challenges -->
+        <div v-if="allChallenges.length === 0" class="text-center py-12">
+          <div class="text-gray-500 mb-4">
+            <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 0a9 9 0 110-18 9 9 0 010 18z" />
+            </svg>
+          </div>
+          <h4 class="text-xl font-medium text-gray-300 mb-2">No Challenges Yet</h4>
+          <p class="text-gray-500">Be the first to create a challenge!</p>
+        </div>
+
+        <!-- All challenges list -->
+        <div v-else class="space-y-4">
           <div 
-            v-for="challenge in previousChallenges" 
+            v-for="challenge in allChallenges" 
             :key="challenge.id"
-            class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors"
+            class="bg-gray-800 rounded-lg p-4 flex items-center justify-between hover:bg-gray-750 transition-colors cursor-pointer"
+            @click="viewChallenge(challenge.id)"
           >
-            <!-- Challenge Header -->
-            <div class="flex items-start justify-between mb-4">
-              <div>
-                <h4 class="text-lg font-semibold text-white mb-1">{{ challenge.title }}</h4>
-                <p class="text-gray-400 text-sm">{{ challenge.description }}</p>
+            <div class="flex-1">
+              <div class="flex items-center space-x-3 mb-2">
+                <h4 class="text-lg font-medium text-white">{{ challenge.title }}</h4>
+                <span 
+                  class="px-2 py-1 rounded-full text-xs font-medium"
+                  :class="getTypeColorClass(challenge.challengeTypeName)"
+                >
+                  {{ challenge.challengeTypeName }}
+                </span>
+                <span 
+                  v-if="challenge.isUserParticipating"
+                  class="px-2 py-1 bg-green-600 text-white rounded-full text-xs font-medium"
+                >
+                  Participating
+                </span>
               </div>
-              <span 
-                :class="`px-2 py-1 rounded text-xs font-medium ${challenge.status === 'Completed' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`"
+              <p class="text-gray-400 text-sm mb-1">{{ challenge.description || 'No description' }}</p>
+              <div class="flex items-center space-x-4 text-xs text-gray-500">
+                <span>{{ challenge.participantCount }} participants</span>
+                <span>Created by {{ challenge.createdByUsername }}</span>
+                <span>{{ formatDateRange(challenge.startDate, challenge.endDate) }}</span>
+              </div>
+            </div>
+            
+            <div class="flex items-center space-x-3">
+              <button
+                v-if="!challenge.isUserParticipating && isDateInFuture(challenge.endDate)"
+                @click.stop="joinChallenge(challenge.id)"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                {{ challenge.status }}
+                Join
+              </button>
+              <span 
+                v-else-if="!isDateInFuture(challenge.endDate)"
+                class="px-4 py-2 bg-gray-600 text-gray-300 rounded-lg text-sm font-medium"
+              >
+                Ended
               </span>
             </div>
-
-            <!-- Winner Info -->
-            <div class="flex items-center mb-4" v-if="challenge.winner">
-              <img 
-                :src="challenge.winner.avatar" 
-                :alt="challenge.winner.name"
-                class="w-8 h-8 rounded-full mr-3"
-              />
-              <div>
-                <p class="text-sm font-medium text-white">Winner: {{ challenge.winner.name }}</p>
-                <p class="text-xs text-gray-400">{{ challenge.winner.achievement }}</p>
-              </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="mb-4">
-              <div class="w-full bg-gray-700 rounded-full h-2">
-                <div 
-                  :class="`h-2 rounded-full transition-all duration-300 ${challenge.status === 'Completed' ? 'bg-green-500' : 'bg-red-500'}`"
-                  :style="`width: ${challenge.completion}%`"
-                ></div>
-              </div>
-            </div>
-
-            <!-- View Details Button -->
-            <button class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-medium transition-colors">
-              View Details
-            </button>
           </div>
         </div>
       </section>
@@ -174,128 +220,103 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { challengeService } from '../services/challenge'
+import type { Challenge } from '../types/challenge'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const user = authStore.user
+const loading = ref(true)
+const allChallenges = ref<Challenge[]>([])
 
 const logout = () => {
   authStore.logout()
   router.push('/login')
 }
 
-// Stubbed active challenges data
-const activeChallenges = ref([
-  {
-    id: 1,
-    title: '30-Day Fitness Challenge',
-    description: 'Daily workouts & nutrition',
-    rank: 2,
-    color: 'green',
-    progress: 60,
-    current: 18,
-    target: 30,
-    unit: 'days'
-  },
-  {
-    id: 2,
-    title: 'Code Daily',
-    description: '100 days of coding',
-    rank: 1,
-    color: 'purple',
-    progress: 45,
-    current: 45,
-    target: 100,
-    unit: 'days'
-  },
-  {
-    id: 3,
-    title: 'Water Challenge',
-    description: '8 glasses daily for 30 days',
-    rank: 4,
-    color: 'blue',
-    progress: 73,
-    current: 22,
-    target: 30,
-    unit: 'days'
-  }
-])
+// Computed properties for filtering challenges
+const activeChallenges = computed(() => {
+  const now = new Date()
+  return allChallenges.value.filter(challenge => 
+    challenge.isActive && 
+    new Date(challenge.endDate) > now &&
+    challenge.isUserParticipating
+  )
+})
 
-// Stubbed previous challenges data
-const previousChallenges = ref([
-  {
-    id: 4,
-    title: 'Reading Marathon',
-    description: '12 books in 12 months',
-    status: 'Completed',
-    completion: 100,
-    winner: {
-      name: 'Sarah Chen',
-      achievement: '12/12 books completed',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=32&h=32&fit=crop&crop=face&auto=format'
-    }
-  },
-  {
-    id: 5,
-    title: 'Meditation Journey',
-    description: '21 days of mindfulness',
-    status: 'Completed',
-    completion: 100,
-    winner: {
-      name: 'Mike Johnson',
-      achievement: '21/21 days completed',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face&auto=format'
-    }
-  },
-  {
-    id: 6,
-    title: 'Language Learning',
-    description: 'Spanish fluency in 6 months',
-    status: 'Failed',
-    completion: 20,
-    winner: {
-      name: 'Emma Davis',
-      achievement: '6/6 months completed',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=32&h=32&fit=crop&crop=face&auto=format'
-    }
-  },
-  {
-    id: 7,
-    title: 'Morning Run',
-    description: '5km daily for 30 days',
-    status: 'Completed',
-    completion: 100,
-    winner: {
-      name: 'Alex Rodriguez',
-      achievement: '30/30 days completed',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=32&h=32&fit=crop&crop=face&auto=format'
-    }
-  },
-  {
-    id: 8,
-    title: 'No Social Media',
-    description: 'Digital detox for 14 days',
-    status: 'Completed',
-    completion: 100,
-    winner: {
-      name: 'Lisa Park',
-      achievement: '14/14 days completed',
-      avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=32&h=32&fit=crop&crop=face&auto=format'
-    }
+const loadChallenges = async () => {
+  try {
+    loading.value = true
+    const challenges = await challengeService.getChallenges()
+    allChallenges.value = challenges
+  } catch (error) {
+    console.error('Failed to load challenges:', error)
+    // You could show a toast notification here
+  } finally {
+    loading.value = false
   }
-])
+}
 
-onMounted(async () => {
-  if (!user) {
-    try {
-      await authStore.getCurrentUser()
-    } catch (error) {
-      console.error('Failed to fetch user data:', error)
-    }
+const joinChallenge = async (challengeId: number) => {
+  try {
+    await challengeService.joinChallenge(challengeId)
+    // Reload challenges to update participation status
+    await loadChallenges()
+  } catch (error) {
+    console.error('Failed to join challenge:', error)
+    // You could show a toast notification here
   }
+}
+
+const viewChallenge = (challengeId: number) => {
+  // Navigate to challenge details page (to be implemented)
+  console.log('View challenge:', challengeId)
+}
+
+const getTypeColorClass = (type: string) => {
+  switch (type.toLowerCase()) {
+    case 'distance':
+      return 'bg-blue-600 text-white'
+    case 'elevation':
+      return 'bg-green-600 text-white'
+    case 'time':
+      return 'bg-purple-600 text-white'
+    default:
+      return 'bg-gray-600 text-white'
+  }
+}
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  }).format(date)
+}
+
+const formatDateRange = (startDate: string, endDate: string) => {
+  const start = formatDate(startDate)
+  const end = formatDate(endDate)
+  return `${start} - ${end}`
+}
+
+const getDaysRemaining = (endDate: string) => {
+  const now = new Date()
+  const end = new Date(endDate)
+  const diffTime = end.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  return Math.max(0, diffDays)
+}
+
+const isDateInFuture = (dateString: string) => {
+  return new Date(dateString) > new Date()
+}
+
+onMounted(() => {
+  loadChallenges()
 })
 </script>
