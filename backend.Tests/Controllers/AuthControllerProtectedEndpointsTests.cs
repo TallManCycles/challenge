@@ -1,0 +1,345 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using NUnit.Framework;
+using System.Security.Claims;
+using backend.Controllers;
+using backend.Data;
+using backend.Models;
+using backend.Tests.Helpers;
+
+namespace backend.Tests.Controllers;
+
+[TestFixture]
+public class AuthControllerProtectedEndpointsTests
+{
+    private ApplicationDbContext _context;
+    private IConfiguration _configuration;
+    private AuthController _controller;
+
+    [SetUp]
+    public void Setup()
+    {
+        _context = TestDbContextFactory.CreateInMemoryContext();
+        _configuration = TestDbContextFactory.CreateTestConfiguration();
+        _controller = new AuthController(_context, _configuration);
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        _context.Database.EnsureDeleted();
+        _context.Dispose();
+    }
+
+    [TestFixture]
+    public class ChangePasswordTests : AuthControllerProtectedEndpointsTests
+    {
+        [Test]
+        public async Task ChangePassword_ValidRequest_ReturnsOkAndUpdatesPassword()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "test@example.com",
+                Username = "testuser",
+                PasswordHash = HashPassword("oldpassword"),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            // Mock authenticated user
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            var request = new ChangePasswordRequest
+            {
+                CurrentPassword = "oldpassword",
+                NewPassword = "newpassword123",
+                ConfirmNewPassword = "newpassword123"
+            };
+
+            // Act
+            var result = await _controller.ChangePassword(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            
+            // Verify password was updated
+            var updatedUser = await _context.Users.FindAsync(user.Id);
+            Assert.That(updatedUser.PasswordHash, Is.Not.EqualTo(HashPassword("oldpassword")));
+            Assert.That(updatedUser.PasswordHash, Is.EqualTo(HashPassword("newpassword123")));
+        }
+
+        [Test]
+        public async Task ChangePassword_IncorrectCurrentPassword_ReturnsBadRequest()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "test@example.com",
+                Username = "testuser",
+                PasswordHash = HashPassword("correctpassword"),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            var request = new ChangePasswordRequest
+            {
+                CurrentPassword = "wrongpassword",
+                NewPassword = "newpassword123",
+                ConfirmNewPassword = "newpassword123"
+            };
+
+            // Act
+            var result = await _controller.ChangePassword(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
+            var badRequestResult = (BadRequestObjectResult)result;
+            var errorResponse = badRequestResult.Value;
+            Assert.That(errorResponse.ToString(), Does.Contain("Current password is incorrect"));
+        }
+
+        [Test]
+        public async Task ChangePassword_UnauthenticatedUser_ReturnsUnauthorized()
+        {
+            // Arrange
+            var request = new ChangePasswordRequest
+            {
+                CurrentPassword = "oldpassword",
+                NewPassword = "newpassword123",
+                ConfirmNewPassword = "newpassword123"
+            };
+
+            // Act
+            var result = await _controller.ChangePassword(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<UnauthorizedResult>());
+        }
+
+        [Test]
+        public async Task ChangePassword_UserNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            SetupAuthenticatedUser(999, "nonexistent@example.com", "nonexistent");
+
+            var request = new ChangePasswordRequest
+            {
+                CurrentPassword = "oldpassword",
+                NewPassword = "newpassword123",
+                ConfirmNewPassword = "newpassword123"
+            };
+
+            // Act
+            var result = await _controller.ChangePassword(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task ChangePassword_InvalidModelState_ReturnsBadRequest()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "test@example.com",
+                Username = "testuser",
+                PasswordHash = HashPassword("oldpassword"),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            var request = new ChangePasswordRequest
+            {
+                CurrentPassword = "",
+                NewPassword = "123", // Too short
+                ConfirmNewPassword = "different"
+            };
+
+            _controller.ModelState.AddModelError("CurrentPassword", "Current password is required");
+            _controller.ModelState.AddModelError("NewPassword", "Password too short");
+
+            // Act
+            var result = await _controller.ChangePassword(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
+        }
+    }
+
+    [TestFixture]
+    public class GetCurrentUserTests : AuthControllerProtectedEndpointsTests
+    {
+        [Test]
+        public async Task GetCurrentUser_AuthenticatedUser_ReturnsOkWithUserInfo()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "test@example.com",
+                Username = "testuser",
+                PasswordHash = "hashedpassword",
+                GarminUserId = "garmin123",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            // Act
+            var result = await _controller.GetCurrentUser();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            var okResult = (OkObjectResult)result;
+            
+            // Use reflection to access anonymous object properties
+            var responseType = okResult.Value?.GetType();
+            var userIdProperty = responseType?.GetProperty("userId");
+            var emailProperty = responseType?.GetProperty("email");
+            var usernameProperty = responseType?.GetProperty("username");
+            var garminConnectedProperty = responseType?.GetProperty("garminConnected");
+            
+            Assert.That(userIdProperty?.GetValue(okResult.Value), Is.EqualTo(1));
+            Assert.That(emailProperty?.GetValue(okResult.Value), Is.EqualTo("test@example.com"));
+            Assert.That(usernameProperty?.GetValue(okResult.Value), Is.EqualTo("testuser"));
+            Assert.That(garminConnectedProperty?.GetValue(okResult.Value), Is.True);
+        }
+
+        [Test]
+        public async Task GetCurrentUser_UserWithoutGarmin_ReturnsOkWithGarminConnectedFalse()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "test@example.com",
+                Username = "testuser",
+                PasswordHash = "hashedpassword",
+                GarminUserId = null,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            // Act
+            var result = await _controller.GetCurrentUser();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+            var okResult = (OkObjectResult)result;
+            
+            var responseType = okResult.Value?.GetType();
+            var garminConnectedProperty = responseType?.GetProperty("garminConnected");
+            Assert.That(garminConnectedProperty?.GetValue(okResult.Value), Is.False);
+        }
+
+        [Test]
+        public async Task GetCurrentUser_UnauthenticatedUser_ReturnsUnauthorized()
+        {
+            // Act
+            var result = await _controller.GetCurrentUser();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<UnauthorizedResult>());
+        }
+
+        [Test]
+        public async Task GetCurrentUser_UserNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            SetupAuthenticatedUser(999, "nonexistent@example.com", "nonexistent");
+
+            // Act
+            var result = await _controller.GetCurrentUser();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task GetCurrentUser_InvalidUserId_ReturnsUnauthorized()
+        {
+            // Arrange
+            SetupAuthenticatedUserWithInvalidId();
+
+            // Act
+            var result = await _controller.GetCurrentUser();
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<UnauthorizedResult>());
+        }
+    }
+
+    private void SetupAuthenticatedUser(int userId, string email, string username)
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, userId.ToString()),
+            new(ClaimTypes.Email, email),
+            new(ClaimTypes.Name, username)
+        };
+
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = claimsPrincipal
+            }
+        };
+    }
+
+    private void SetupAuthenticatedUserWithInvalidId()
+    {
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, "invalid-id"),
+            new(ClaimTypes.Email, "test@example.com"),
+            new(ClaimTypes.Name, "testuser")
+        };
+
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var claimsPrincipal = new ClaimsPrincipal(identity);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = claimsPrincipal
+            }
+        };
+    }
+
+    private string HashPassword(string password)
+    {
+        var salt = _configuration["Auth:Salt"] ?? "DefaultSalt123!";
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hashedBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password + salt));
+        return Convert.ToBase64String(hashedBytes);
+    }
+}

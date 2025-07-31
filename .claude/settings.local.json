@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(dotnet build)",
+      "Bash(dotnet new:*)",
+      "Bash(rmdir:*)",
+      "Bash(rm:*)",
+      "Bash(dotnet add reference:*)",
+      "Bash(dotnet add package:*)",
+      "Bash(del UnitTest1.cs)",
+      "Bash(dotnet test)",
+      "Bash(dotnet sln:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet ef database:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet test:*)",
+      "Bash(npm install)",
+      "Bash(dotnet run:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(taskkill:*)"
+    ],
+    "deny": []
+  }
+}
