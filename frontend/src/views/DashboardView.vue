@@ -229,7 +229,6 @@ import type { Challenge } from '../types/challenge'
 const router = useRouter()
 const authStore = useAuthStore()
 
-const user = authStore.user
 const loading = ref(true)
 const allChallenges = ref<Challenge[]>([])
 

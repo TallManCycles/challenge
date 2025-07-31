@@ -224,7 +224,6 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { authService } from '../services/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -322,7 +321,7 @@ const handleSubmit = async () => {
       confirmPassword: form.confirmPassword
     }
 
-    const response = await authStore.register(registerData)
+    await authStore.register(registerData)
     
     // Registration successful
     registrationSuccess.value = true
@@ -332,9 +331,9 @@ const handleSubmit = async () => {
       router.push('/dashboard')
     }, 1500)
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Registration failed:', error)
-    errorMessage.value = error.message || 'Registration failed. Please try again.'
+    errorMessage.value = error instanceof Error ? error.message : 'Registration failed. Please try again.'
   } finally {
     isLoading.value = false
   }

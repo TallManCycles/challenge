@@ -201,9 +201,9 @@ const handleSubmit = async () => {
     // Show success state
     resetSent.value = true
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Password reset failed:', error)
-    errorMessage.value = error.message || 'Failed to send reset email. Please try again.'
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to send reset email. Please try again.'
   } finally {
     isLoading.value = false
   }

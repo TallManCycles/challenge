@@ -268,12 +268,13 @@ const handleSubmit = async () => {
       router.push('/login')
     }, 2000)
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Password reset failed:', error)
-    if (error.message.toLowerCase().includes('token') || error.message.toLowerCase().includes('expired')) {
+    const errorText = error instanceof Error ? error.message : 'Failed to reset password. Please try again.'
+    if (errorText.toLowerCase().includes('token') || errorText.toLowerCase().includes('expired')) {
       isValidToken.value = false
     } else {
-      errorMessage.value = error.message || 'Failed to reset password. Please try again.'
+      errorMessage.value = errorText
     }
   } finally {
     isLoading.value = false

@@ -52,6 +52,7 @@ export interface UpdateChallengeRequest {
   isActive: boolean
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface JoinChallengeRequest {
   // Empty for now, can be extended later
 }
