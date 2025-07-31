@@ -139,7 +139,7 @@ describe('LoginView', () => {
 
   it('shows loading state during login', async () => {
     // Mock login that takes time
-    let resolveLogin: (value: AuthResponse) => void
+    let resolveLogin: (value: AuthResponse) => void = () => {}
     authStore.login = vi.fn(() => new Promise<AuthResponse>(resolve => { resolveLogin = resolve }))
     authStore.isLoading = true
 

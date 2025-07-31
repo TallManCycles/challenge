@@ -293,6 +293,198 @@ public class AuthControllerProtectedEndpointsTests
         }
     }
 
+    [TestFixture]
+    public class UpdateProfileTests : AuthControllerProtectedEndpointsTests
+    {
+        [Test]
+        public async Task UpdateProfile_ValidRequest_ReturnsOkAndUpdatesProfile()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "old@example.com",
+                Username = "testuser",
+                FullName = "Old Name",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            var request = new UpdateProfileRequest
+            {
+                Email = "new@example.com",
+                FullName = "New Full Name"
+            };
+
+            // Act
+            var result = await _controller.UpdateProfile(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+
+            // Verify profile was updated
+            var updatedUser = await _context.Users.FindAsync(user.Id);
+            Assert.That(updatedUser.Email, Is.EqualTo("new@example.com"));
+            Assert.That(updatedUser.FullName, Is.EqualTo("New Full Name"));
+            Assert.That(updatedUser.UpdatedAt, Is.GreaterThanOrEqualTo(user.UpdatedAt));
+        }
+
+        [Test]
+        public async Task UpdateProfile_EmailAlreadyExists_ReturnsBadRequest()
+        {
+            // Arrange
+            var existingUser = new User
+            {
+                Id = 2,
+                Email = "existing@example.com",
+                Username = "existinguser",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(existingUser);
+
+            var currentUser = new User
+            {
+                Id = 1,
+                Email = "current@example.com",
+                Username = "currentuser",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(currentUser);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(currentUser.Id, currentUser.Email, currentUser.Username);
+
+            var request = new UpdateProfileRequest
+            {
+                Email = "existing@example.com", // Email already taken by another user
+                FullName = "New Name"
+            };
+
+            // Act
+            var result = await _controller.UpdateProfile(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
+            var badRequestResult = (BadRequestObjectResult)result;
+            var errorResponse = badRequestResult.Value;
+            Assert.That(errorResponse.ToString(), Does.Contain("Email is already in use"));
+        }
+
+        [Test]
+        public async Task UpdateProfile_SameEmailAsCurrent_ReturnsOkAndUpdatesProfile()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "current@example.com",
+                Username = "testuser",
+                FullName = "Old Name",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            var request = new UpdateProfileRequest
+            {
+                Email = "current@example.com", // Same email as current user
+                FullName = "New Full Name"
+            };
+
+            // Act
+            var result = await _controller.UpdateProfile(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<OkObjectResult>());
+
+            // Verify profile was updated
+            var updatedUser = await _context.Users.FindAsync(user.Id);
+            Assert.That(updatedUser.FullName, Is.EqualTo("New Full Name"));
+        }
+
+        [Test]
+        public async Task UpdateProfile_UnauthenticatedUser_ReturnsUnauthorized()
+        {
+            // Arrange
+            var request = new UpdateProfileRequest
+            {
+                Email = "new@example.com",
+                FullName = "New Name"
+            };
+
+            // Act
+            var result = await _controller.UpdateProfile(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<UnauthorizedResult>());
+        }
+
+        [Test]
+        public async Task UpdateProfile_UserNotFound_ReturnsNotFound()
+        {
+            // Arrange
+            SetupAuthenticatedUser(999, "nonexistent@example.com", "nonexistent");
+
+            var request = new UpdateProfileRequest
+            {
+                Email = "new@example.com",
+                FullName = "New Name"
+            };
+
+            // Act
+            var result = await _controller.UpdateProfile(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<NotFoundResult>());
+        }
+
+        [Test]
+        public async Task UpdateProfile_InvalidModelState_ReturnsBadRequest()
+        {
+            // Arrange
+            var user = new User
+            {
+                Id = 1,
+                Email = "current@example.com",
+                Username = "testuser",
+                PasswordHash = "hashedpassword",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            SetupAuthenticatedUser(user.Id, user.Email, user.Username);
+
+            var request = new UpdateProfileRequest
+            {
+                Email = "invalid-email", // Invalid email format
+                FullName = "New Name"
+            };
+
+            _controller.ModelState.AddModelError("Email", "Invalid email format");
+
+            // Act
+            var result = await _controller.UpdateProfile(request);
+
+            // Assert
+            Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
+        }
+    }
+
     private void SetupAuthenticatedUser(int userId, string email, string username)
     {
         var claims = new List<Claim>
