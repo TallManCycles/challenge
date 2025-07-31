@@ -5,7 +5,8 @@ import type {
   User, 
   ChangePasswordRequest,
   ForgotPasswordRequest,
-  ResetPasswordRequest 
+  ResetPasswordRequest,
+  UpdateProfileRequest
 } from '../types/auth'
 
 const API_BASE_URL = 'http://localhost:5123/api' // Backend API URL
@@ -15,7 +16,44 @@ class AuthService {
 
   constructor() {
     // Load token from localStorage on initialization
-    this.token = localStorage.getItem('auth_token')
+    this.loadTokenFromStorage()
+  }
+
+  private loadTokenFromStorage(): void {
+    const storedToken = localStorage.getItem('auth_token')
+    if (storedToken && !this.isTokenExpired(storedToken)) {
+      this.token = storedToken
+    } else if (storedToken) {
+      // Token is expired, clean up
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_data')
+      this.token = null
+    }
+  }
+
+  private isTokenExpired(token: string): boolean {
+    try {
+      // JWT tokens have 3 parts separated by dots
+      const parts = token.split('.')
+      if (parts.length !== 3) {
+        return true
+      }
+
+      // Decode the payload (second part)
+      const payload = JSON.parse(atob(parts[1]))
+      
+      // Check if token has expiry claim
+      if (!payload.exp) {
+        return false // If no expiry, consider it valid
+      }
+
+      // Compare expiry time with current time (exp is in seconds, Date.now() is in milliseconds)
+      const currentTime = Math.floor(Date.now() / 1000)
+      return payload.exp < currentTime
+    } catch {
+      // If we can't decode the token, consider it expired
+      return true
+    }
   }
 
   private async makeRequest<T>(
@@ -111,6 +149,13 @@ class AuthService {
     })
   }
 
+  async updateProfile(data: UpdateProfileRequest): Promise<User> {
+    return await this.makeRequest<User>('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  }
+
   logout(): void {
     this.token = null
     localStorage.removeItem('auth_token')
@@ -118,7 +163,18 @@ class AuthService {
   }
 
   isAuthenticated(): boolean {
-    return this.token !== null
+    if (!this.token) {
+      return false
+    }
+
+    // Check if token is expired
+    if (this.isTokenExpired(this.token)) {
+      // If token is expired, clean up and return false
+      this.logout()
+      return false
+    }
+
+    return true
   }
 
   getToken(): string | null {
@@ -128,6 +184,10 @@ class AuthService {
   getUserData(): { userId: number; email: string; username: string } | null {
     const userData = localStorage.getItem('user_data')
     return userData ? JSON.parse(userData) : null
+  }
+
+  refreshToken(): void {
+    this.loadTokenFromStorage()
   }
 }
 

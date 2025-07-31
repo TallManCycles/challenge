@@ -13,6 +13,8 @@ public class User
     [Required]
     public string Username { get; set; } = string.Empty;
     
+    public string? FullName { get; set; }
+    
     [Required]
     public string PasswordHash { get; set; } = string.Empty;
     

@@ -191,8 +191,46 @@ public class AuthController : ControllerBase
             userId = user.Id,
             email = user.Email,
             username = user.Username,
+            fullName = user.FullName,
             createdAt = user.CreatedAt,
             garminConnected = !string.IsNullOrEmpty(user.GarminUserId)
+        });
+    }
+
+    [HttpPatch("profile")]
+    [Authorize]
+    public async Task<IActionResult> UpdateProfile(UpdateProfileRequest request)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        // Get current user from JWT token
+        var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
+            return Unauthorized();
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        // Check if email is already taken by another user
+        if (user.Email != request.Email && await _context.Users.AnyAsync(u => u.Email == request.Email))
+            return BadRequest(new { message = "Email is already in use by another account" });
+
+        // Update user profile
+        user.Email = request.Email;
+        user.FullName = request.FullName;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            userId = user.Id,
+            email = user.Email,
+            username = user.Username,
+            fullName = user.FullName,
+            message = "Profile updated successfully"
         });
     }
 

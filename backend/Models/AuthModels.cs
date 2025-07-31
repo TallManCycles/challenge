@@ -76,3 +76,13 @@ public class ResetPasswordRequest
     [Compare(nameof(NewPassword))]
     public string ConfirmNewPassword { get; set; } = string.Empty;
 }
+
+public class UpdateProfileRequest
+{
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; } = string.Empty;
+    
+    [MaxLength(100)]
+    public string? FullName { get; set; }
+}

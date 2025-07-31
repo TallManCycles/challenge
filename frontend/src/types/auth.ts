@@ -19,10 +19,12 @@ export interface AuthResponse {
 }
 
 export interface User {
-  userId: number
+  id?: number
+  userId?: number
   email: string
   username: string
-  createdAt: string
+  fullName?: string
+  createdAt?: string
   garminConnected: boolean
 }
 
@@ -40,4 +42,9 @@ export interface ResetPasswordRequest {
   resetToken: string
   newPassword: string
   confirmNewPassword: string
+}
+
+export interface UpdateProfileRequest {
+  email: string
+  fullName?: string
 }
