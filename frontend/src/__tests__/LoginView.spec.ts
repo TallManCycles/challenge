@@ -23,8 +23,11 @@ vi.mock('../services/auth', () => ({
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    { path: '/', redirect: '/login' },
     { path: '/login', component: LoginView },
-    { path: '/dashboard', component: { template: '<div>Dashboard</div>' } }
+    { path: '/dashboard', component: { template: '<div>Dashboard</div>' } },
+    { path: '/register', component: { template: '<div>Register</div>' } },
+    { path: '/forgot-password', component: { template: '<div>Forgot Password</div>' } }
   ]
 })
 

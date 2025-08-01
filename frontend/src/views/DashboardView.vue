@@ -21,7 +21,7 @@
     </header>
 
     <!-- Loading State -->
-    <div v-if="loading" class="max-w-7xl mx-auto px-6 py-8">
+    <div v-if="loading" class="max-w-7xl mx-auto px-6 py-8" data-testid="loading-state">
       <div class="animate-pulse">
         <div class="h-8 bg-gray-700 rounded w-64 mb-2"></div>
         <div class="h-4 bg-gray-700 rounded w-96 mb-8"></div>
@@ -55,7 +55,7 @@
       </div>
 
       <!-- Active Challenges -->
-      <section class="mb-12">
+      <section class="mb-12" data-testid="active-challenges">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-xl font-semibold text-white">Active Challenges</h3>
           <span class="bg-green-600 text-white px-3 py-1 rounded-full text-sm font-medium">
@@ -89,6 +89,7 @@
             v-for="challenge in activeChallenges" 
             :key="challenge.id"
             class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer"
+            data-testid="active-challenge-card"
             @click="viewChallenge(challenge.id)"
           >
             <!-- Challenge Header -->
@@ -146,7 +147,7 @@
       </section>
 
       <!-- All Challenges -->
-      <section>
+      <section data-testid="all-challenges">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-xl font-semibold text-white">All Challenges</h3>
           <span class="bg-gray-600 text-white px-3 py-1 rounded-full text-sm font-medium">
@@ -171,6 +172,7 @@
             v-for="challenge in allChallenges" 
             :key="challenge.id"
             class="bg-gray-800 rounded-lg p-4 flex items-center justify-between hover:bg-gray-750 transition-colors cursor-pointer"
+            data-testid="challenge-card"
             @click="viewChallenge(challenge.id)"
           >
             <div class="flex-1">
@@ -202,6 +204,7 @@
                 v-if="!challenge.isUserParticipating && isDateInFuture(challenge.endDate)"
                 @click.stop="joinChallenge(challenge.id)"
                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                data-testid="join-button"
               >
                 Join
               </button>
@@ -272,8 +275,7 @@ const joinChallenge = async (challengeId: number) => {
 }
 
 const viewChallenge = (challengeId: number) => {
-  // Navigate to challenge details page (to be implemented)
-  console.log('View challenge:', challengeId)
+  router.push(`/challenges/${challengeId}`)
 }
 
 const getTypeColorClass = (type: string) => {

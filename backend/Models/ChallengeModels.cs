@@ -69,6 +69,7 @@ public class ChallengeParticipantResponse
     public DateTime JoinedAt { get; set; }
     public decimal CurrentTotal { get; set; }
     public DateTime? LastActivityDate { get; set; }
+    public bool IsCurrentUser { get; set; }
 }
 
 public class ChallengeDetailsResponse : ChallengeResponse
@@ -79,4 +80,28 @@ public class ChallengeDetailsResponse : ChallengeResponse
 public class JoinChallengeRequest
 {
     // This could be empty or contain additional data if needed
+}
+
+public class ChallengeActivityResponse
+{
+    public int Id { get; set; }
+    public int UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string? FullName { get; set; }
+    public string ActivityName { get; set; } = string.Empty;
+    public decimal Distance { get; set; }
+    public decimal ElevationGain { get; set; }
+    public int MovingTime { get; set; }
+    public DateTime ActivityDate { get; set; }
+}
+
+public class ChallengeLeaderboardResponse
+{
+    public int Position { get; set; }
+    public int UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string? FullName { get; set; }
+    public decimal CurrentTotal { get; set; }
+    public bool IsCurrentUser { get; set; }
+    public DateTime? LastActivityDate { get; set; }
 }
