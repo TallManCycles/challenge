@@ -14,6 +14,9 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
+# Install curl for health checks (before switching to non-root user)
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 # Create directory for SQLite database with proper permissions
 RUN mkdir -p /app/data && chmod 755 /app/data
 
