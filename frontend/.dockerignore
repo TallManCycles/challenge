@@ -1,0 +1,12 @@
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.env
+README.md
+node_modules
+dist
+.nuxt
+.output
+.vscode
+.vs

@@ -1,0 +1,15 @@
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.vs
+.vscode
+*/bin
+*/obj
+**/.toolstarget
+.env
+README.md
+logs/
+*.db
+*.db-wal
+*.db-shm
