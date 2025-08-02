@@ -6,7 +6,7 @@ import DashboardView from '../views/DashboardView.vue'
 import ChallengeDetailView from '../views/ChallengeDetailView.vue'
 import type { Challenge } from '../types/challenge'
 
-// Mock the challenge service
+// Mock the challenge service - using future dates to ensure challenges are active
 const mockChallenges: Challenge[] = [
   {
     id: 1,
@@ -17,7 +17,7 @@ const mockChallenges: Challenge[] = [
     challengeType: 1,
     challengeTypeName: 'Distance',
     startDate: '2025-01-15T00:00:00Z',
-    endDate: '2025-02-15T00:00:00Z',
+    endDate: '2025-12-15T00:00:00Z', // Far future date
     isActive: true,
     createdAt: '2025-01-15T00:00:00Z',
     updatedAt: '2025-01-15T00:00:00Z',
@@ -33,7 +33,7 @@ const mockChallenges: Challenge[] = [
     challengeType: 2,
     challengeTypeName: 'Elevation',
     startDate: '2025-01-20T00:00:00Z',
-    endDate: '2025-02-10T00:00:00Z',
+    endDate: '2025-12-10T00:00:00Z', // Far future date
     isActive: true,
     createdAt: '2025-01-20T00:00:00Z',
     updatedAt: '2025-01-20T00:00:00Z',
@@ -126,8 +126,8 @@ describe('Dashboard to Challenge Detail Navigation', () => {
     router = createTestRouter()
   })
 
-  const createWrapper = (component: unknown, route: string = '/dashboard') => {
-    router.push(route)
+  const createWrapper = async (component: unknown, route: string = '/dashboard') => {
+    await router.push(route)
     return mount(component, {
       global: {
         plugins: [
@@ -149,7 +149,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
 
   describe('Dashboard Challenge Cards', () => {
     it('renders challenge cards with correct data', async () => {
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       // Check that challenges are displayed
@@ -166,7 +166,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
     })
 
     it('shows active challenges section correctly', async () => {
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       const activeChallengesSection = wrapper.find('[data-testid="active-challenges"]')
@@ -177,7 +177,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
     })
 
     it('shows all challenges section correctly', async () => {
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       const allChallengesSection = wrapper.find('[data-testid="all-challenges"]')
@@ -186,7 +186,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
     })
 
     it('displays participation status correctly', async () => {
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       const challengeCards = wrapper.findAll('[data-testid="challenge-card"]')
@@ -201,7 +201,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
 
   describe('Navigation to Challenge Detail', () => {
     it('navigates to challenge detail when challenge card is clicked', async () => {
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       const routerPushSpy = vi.spyOn(router, 'push')
@@ -214,7 +214,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
     })
 
     it('navigates to challenge detail from active challenges section', async () => {
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       const routerPushSpy = vi.spyOn(router, 'push')
@@ -228,7 +228,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
     })
 
     it('prevents navigation when join button is clicked', async () => {
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       const routerPushSpy = vi.spyOn(router, 'push')
@@ -247,7 +247,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
 
   describe('Challenge Detail Page Loading', () => {
     it('loads challenge detail page with correct data', async () => {
-      const wrapper = createWrapper(ChallengeDetailView, '/challenges/1')
+      const wrapper = await createWrapper(ChallengeDetailView, '/challenges/1')
       await flushPromises()
 
       // Check that challenge details are loaded
@@ -256,7 +256,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
     })
 
     it('shows loading state initially', async () => {
-      const wrapper = createWrapper(ChallengeDetailView, '/challenges/1')
+      const wrapper = await createWrapper(ChallengeDetailView, '/challenges/1')
       
       // Before promises resolve, should show loading
       expect(wrapper.find('[data-testid="loading-state"]').exists()).toBe(true)
@@ -277,7 +277,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
 
   describe('Back Navigation', () => {
     it('navigates back to dashboard when back button is clicked', async () => {
-      const wrapper = createWrapper(ChallengeDetailView, '/challenges/1')
+      const wrapper = await createWrapper(ChallengeDetailView, '/challenges/1')
       await flushPromises()
 
       const routerPushSpy = vi.spyOn(router, 'push')
@@ -295,7 +295,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
       const mockGetChallenges = vi.mocked((await import('../services/challenge')).challengeService.getChallenges)
       mockGetChallenges.mockRejectedValueOnce(new Error('API Error'))
       
-      const wrapper = createWrapper(DashboardView)
+      const wrapper = await createWrapper(DashboardView)
       await flushPromises()
 
       // Should not crash and should stop loading
@@ -318,6 +318,7 @@ describe('Dashboard to Challenge Detail Navigation', () => {
 
   describe('Authentication Integration', () => {
     it('handles unauthenticated state', async () => {
+      await router.push('/dashboard')
       const wrapper = mount(DashboardView, {
         global: {
           plugins: [

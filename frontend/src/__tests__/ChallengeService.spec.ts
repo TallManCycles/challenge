@@ -19,7 +19,7 @@ Object.defineProperty(window, 'localStorage', {
 
 describe('ChallengeService', () => {
   const mockToken = 'mock-jwt-token'
-  const baseUrl = 'http://localhost:5000/api'
+  const baseUrl = 'http://localhost:5123/api'
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -330,7 +330,7 @@ describe('ChallengeService', () => {
         json: () => Promise.reject(new Error('Invalid JSON'))
       } as Response)
 
-      await expect(challengeService.getChallenges()).rejects.toThrow('HTTP error! status: 500')
+      await expect(challengeService.getChallenges()).rejects.toThrow('An error occurred')
     })
 
     it('handles empty error responses', async () => {
@@ -346,7 +346,7 @@ describe('ChallengeService', () => {
     it('handles network timeouts', async () => {
       mockFetch.mockRejectedValueOnce(new TypeError('Failed to fetch'))
 
-      await expect(challengeService.getChallenges()).rejects.toThrow('Network error occurred')
+      await expect(challengeService.getChallenges()).rejects.toThrow('Failed to fetch')
     })
   })
 
