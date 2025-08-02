@@ -1,20 +1,20 @@
 services:
   postgres:
     image: postgres:16
-    container_name: ${POSTGRES_CONTAINER_NAME:-garmin-challenge-postgres}
+    container_name: ${POSTGRES_CONTAINER_NAME}
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-garmin_challenge}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
       # --- CHANGE: Removed default password for security. ---
       # This variable MUST be set in your .env file.
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Error: POSTGRES_PASSWORD is not set in the environment.}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT}:5432"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -29,16 +29,16 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       # --- CHANGE: Enforced required variables to prevent running with empty secrets. ---
       # These variables MUST be set in your .env file.
-      - ConnectionStrings__DefaultConnection=Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-garmin_challenge};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD?Error: POSTGRES_PASSWORD is not set.}
-      - Auth__JwtKey=${JWT_KEY?Error: JWT_KEY is not set.}
-      - Auth__Salt=${AUTH_SALT?Error: AUTH_SALT is not set.}
+      - ConnectionStrings__DefaultConnection=Host=${POSTGRES_HOST};Port=${POSTGRES_PORT};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - Auth__JwtKey=${JWT_KEY}
+      - Auth__Salt=${AUTH_SALT}
       # Allowed origins for production. Set these in your .env file.
-      - Frontend__AllowedOrigins__0=${FRONTEND_ORIGIN_0?Error: FRONTEND_ORIGIN_0 is not set.}
+      - Frontend__AllowedOrigins__0=${FRONTEND_ORIGIN_0}
       - Frontend__AllowedOrigins__1=${FRONTEND_ORIGIN_1} # This one is optional
       - Logging__LogLevel__Default=Warning
       - Logging__LogLevel__Microsoft_AspNetCore=Warning
     ports:
-      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_PORT}:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -61,7 +61,7 @@ services:
         VITE_APP_API_ENDPOINT: ${VITE_APP_API_ENDPOINT:-http://localhost:8080}
     container_name: ${FRONTEND_CONTAINER_NAME:-garmin-challenge-frontend}
     ports:
-      - "${FRONTEND_PORT:-80}:80"
+      - "${FRONTEND_PORT}:80"
     # --- CHANGE: Removed redundant 'environment' section. ---
     # Runtime environment variables are not read by the static files in the Nginx container.
     # The 'build.args' above is the correct mechanism.
