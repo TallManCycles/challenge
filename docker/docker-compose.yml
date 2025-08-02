@@ -1,26 +1,7 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: ${POSTGRES_CONTAINER_NAME:-garmin-challenge-postgres}
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB:-garmin_challenge}
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - challenge-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 5s
-
   backend:
     build:
-      context: ./backend
+      context: ../backend
       dockerfile: Dockerfile
     container_name: ${BACKEND_CONTAINER_NAME}
     ports:
@@ -35,11 +16,6 @@ services:
       - Frontend__AllowedOrigins__2=${FRONTEND_ORIGIN_2}
       - Logging__LogLevel__Default=${LOG_LEVEL_DEFAULT}
       - Logging__LogLevel__Microsoft_AspNetCore=${LOG_LEVEL_ASPNETCORE}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - challenge-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
@@ -50,7 +26,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ../frontend
       dockerfile: Dockerfile
       args:
         VITE_APP_API_ENDPOINT: ${VITE_APP_API_ENDPOINT}
@@ -61,8 +37,6 @@ services:
       - backend
     environment:
       - VITE_APP_API_ENDPOINT=${VITE_APP_API_ENDPOINT}
-    networks:
-      - challenge-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
@@ -70,10 +44,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
-
-volumes:
-  postgres_data:
-
-networks:
-  challenge-network:
-    driver: bridge

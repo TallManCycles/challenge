@@ -31,7 +31,6 @@
       "Bash(ls:*)",
       "Bash(npm run build:*)",
       "Bash(mv:*)",
-      "Bash(git restore:*)"
     ],
     "deny": []
   }

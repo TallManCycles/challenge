@@ -25,16 +25,16 @@ This guide explains how to deploy the frontend and backend services separately u
 
 ```bash
 # Start backend
-docker-compose -f docker-compose.backend.yml up --build -d
+docker-compose -f docker/docker-compose.backend.yml up --build -d
 
 # View backend logs
-docker-compose -f docker-compose.backend.yml logs -f
+docker-compose -f docker/docker-compose.backend.yml logs -f
 
 # Stop backend
-docker-compose -f docker-compose.backend.yml down
+docker-compose -f docker/docker-compose.backend.yml down
 
 # Check backend status
-docker-compose -f docker-compose.backend.yml ps
+docker-compose -f docker/docker-compose.backend.yml ps
 ```
 
 **Backend will be available at:**
@@ -46,16 +46,16 @@ docker-compose -f docker-compose.backend.yml ps
 
 ```bash
 # Start frontend
-docker-compose -f docker-compose.frontend.yml up --build -d
+docker-compose -f docker/docker-compose.frontend.yml up --build -d
 
 # View frontend logs
-docker-compose -f docker-compose.frontend.yml logs -f
+docker-compose -f docker/docker-compose.frontend.yml logs -f
 
 # Stop frontend
-docker-compose -f docker-compose.frontend.yml down
+docker-compose -f docker/docker-compose.frontend.yml down
 
 # Check frontend status
-docker-compose -f docker-compose.frontend.yml ps
+docker-compose -f docker/docker-compose.frontend.yml ps
 ```
 
 **Frontend will be available at:**
@@ -144,9 +144,14 @@ FRONTEND_PORT=4000
 ## File Structure
 
 ```
-├── docker-compose.yml              # Original combined file (still works)
-├── docker-compose.backend.yml      # Backend service only
-├── docker-compose.frontend.yml     # Frontend service only
+├── docker/
+│   ├── docker-compose.yml              # Original combined file (still works)
+│   ├── docker-compose.backend.yml      # Backend service only
+│   ├── docker-compose.frontend.yml     # Frontend service only
+│   ├── docker-compose.postgres.yml     # PostgreSQL service only
+│   ├── docker-compose.external-db.yml  # External database deployment
+│   ├── docker-compose.coolify.yml      # Coolify deployment
+│   └── docker-compose.coolify-test.yml # Local Coolify testing
 ├── deploy-backend.bat              # Backend deployment script
 ├── deploy-frontend.bat             # Frontend deployment script
 ├── deploy-fullstack.bat            # Deploy both services
