@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ${BACKEND_CONTAINER_NAME:-challenge-backend}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - ${DATA_VOLUME_PATH:-./data}:/app/data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ConnectionStrings__DefaultConnection=${CONNECTION_STRING:-Data Source=/app/data/garmin_challenge.db}
+      - Auth__JwtKey=${JWT_KEY:-LocalDevelopmentKey123456789012345678901234567890}
+      - Auth__Salt=${AUTH_SALT:-LocalDevSalt123!}
+      - Frontend__AllowedOrigins__0=${FRONTEND_ORIGIN_0:-http://localhost:5173}
+      - Frontend__AllowedOrigins__1=${FRONTEND_ORIGIN_1:-http://localhost:3000}
+      - Frontend__AllowedOrigins__2=${FRONTEND_ORIGIN_2:-http://frontend:80}
+      - Logging__LogLevel__Default=${LOG_LEVEL_DEFAULT:-Information}
+      - Logging__LogLevel__Microsoft_AspNetCore=${LOG_LEVEL_ASPNETCORE:-Information}
+    networks:
+      - challenge-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  challenge-network:
+    name: challenge-network
+    external: true
