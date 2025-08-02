@@ -82,8 +82,6 @@ try
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"Database initialization failed: {ex.Message}");
-    Console.WriteLine($"Stack trace: {ex.StackTrace}");
     // Continue without failing - let the app start
 }
 
