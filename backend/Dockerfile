@@ -34,7 +34,7 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_ENVIRONMENT=Production
-ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/garmin_challenge.db"
+ENV ConnectionStrings__DefaultConnection="Data Source=/tmp/garmin_challenge.db"
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ENV DOTNET_EnableDiagnostics=0
 
