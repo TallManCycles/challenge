@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<User>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
             entity.HasIndex(e => e.Email).IsUnique();
             entity.HasIndex(e => e.Username).IsUnique();
             entity.HasIndex(e => e.GarminUserId).IsUnique();
@@ -37,6 +38,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Challenge>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
             entity.Property(e => e.Title).HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
             
@@ -50,6 +52,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<ChallengeParticipant>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
             entity.HasIndex(e => new { e.ChallengeId, e.UserId }).IsUnique();
             
             entity.Property(e => e.CurrentTotal).HasPrecision(18, 2);
@@ -69,6 +72,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Activity>(entity =>
         {
             entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
             entity.HasIndex(e => e.GarminActivityId).IsUnique();
             
             entity.Property(e => e.GarminActivityId).HasMaxLength(100);

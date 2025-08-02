@@ -23,8 +23,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy the published app
 COPY --from=build /app/publish ./
 
-# Create data directory and set ownership
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+# Set ownership of app directory
+RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
@@ -34,7 +34,7 @@ EXPOSE 8080
 ENV ASPNETCORE_URLS=http://0.0.0.0:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_ENVIRONMENT=Production
-ENV ConnectionStrings__DefaultConnection="Data Source=/app/data/garmin_challenge.db"
+ENV ConnectionStrings__DefaultConnection="Host=postgres;Port=5432;Database=garmin_challenge;Username=postgres;Password=postgres"
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 ENV DOTNET_EnableDiagnostics=0
 
