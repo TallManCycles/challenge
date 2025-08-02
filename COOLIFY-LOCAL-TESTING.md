@@ -19,7 +19,7 @@ This script will:
 ### Option 2: Manual Testing
 ```bash
 # 1. Copy test environment
-copy .env.coolify-test .env
+copy docker\.env.coolify-test .env
 
 # 2. Deploy with Coolify test compose
 docker-compose -f docker/docker-compose.coolify-test.yml up --build -d
@@ -62,7 +62,7 @@ docker-compose -f docker/docker-compose.coolify-test.yml down
 - Uses same structure as production Coolify deployment
 - Includes PostgreSQL, backend, and frontend
 
-### `.env.coolify-test`
+### `docker/.env.coolify-test`
 - Test environment variables
 - Uses container names for service communication
 - Safe test credentials (don't use in production)

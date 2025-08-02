@@ -155,5 +155,10 @@ FRONTEND_PORT=4000
 ├── deploy-backend.bat              # Backend deployment script
 ├── deploy-frontend.bat             # Frontend deployment script
 ├── deploy-fullstack.bat            # Deploy both services
-└── .env                           # Shared environment configuration
+├── .env                               # Shared environment configuration
+└── docker/
+    ├── .env.example                   # Example environment variables
+    ├── .env.production                # Production environment template
+    ├── .env.coolify                   # Coolify deployment template
+    └── .env.coolify-test              # Local Coolify testing
 ```
