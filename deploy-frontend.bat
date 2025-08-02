@@ -19,30 +19,26 @@ if not exist ".env" (
 )
 
 echo.
-echo 3. Creating shared network (if it doesn't exist)...
-docker network create challenge-network 2>nul || echo Network already exists
+echo 3. Building and starting frontend service...
+docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend up --build -d
 
 echo.
-echo 4. Building and starting frontend service...
-docker-compose -f docker-compose.frontend.yml -p challenge-frontend up --build -d
-
-echo.
-echo 5. Waiting for frontend to start...
+echo 4. Waiting for frontend to start...
 timeout /t 10
 
 echo.
-echo 6. Checking frontend status...
-docker-compose -f docker-compose.frontend.yml -p challenge-frontend ps
+echo 5. Checking frontend status...
+docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend ps
 
 echo.
-echo 7. Frontend deployment complete! Service available at:
+echo 6. Frontend deployment complete! Service available at:
 echo    - Frontend (Vue.js): http://localhost:3000
 echo.
 echo NOTE: Make sure backend is running for full functionality!
 echo You can start backend with: .\deploy-backend.bat
 
 echo.
-echo To view logs: docker-compose -f docker-compose.frontend.yml -p challenge-frontend logs -f
-echo To stop: docker-compose -f docker-compose.frontend.yml -p challenge-frontend down
+echo To view logs: docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend logs -f
+echo To stop: docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend down
 echo.
 pause
