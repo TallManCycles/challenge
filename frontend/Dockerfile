@@ -2,6 +2,10 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
+# Accept build arguments
+ARG VITE_APP_API_ENDPOINT
+ENV VITE_APP_API_ENDPOINT=$VITE_APP_API_ENDPOINT
+
 # Copy package files
 COPY package*.json ./
 RUN npm ci --prefer-offline

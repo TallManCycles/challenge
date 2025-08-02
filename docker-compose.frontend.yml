@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_APP_API_ENDPOINT: ${VITE_APP_API_ENDPOINT:-http://localhost:8080}
+    container_name: ${FRONTEND_CONTAINER_NAME:-challenge-frontend}
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      - VITE_APP_API_ENDPOINT=${VITE_APP_API_ENDPOINT:-http://localhost:8080}
+    networks:
+      - challenge-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  challenge-network:
+    name: challenge-network
+    external: true
