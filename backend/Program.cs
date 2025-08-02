@@ -55,12 +55,18 @@ builder.Services.AddCors(options =>
     });
 });
 
+
 // Configure JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
     options.SerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
 });
+
+foreach (var origin in allowedOrigins)
+{
+    Console.WriteLine($"Allowed Origin: {origin}");
+}
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
