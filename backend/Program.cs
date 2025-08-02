@@ -64,13 +64,27 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Seed the database in development
-if (app.Environment.IsDevelopment())
+// Initialize database
+try
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var seeder = new DatabaseSeeder(context);
-    await seeder.SeedAsync();
+    
+    // Ensure database is created
+    await context.Database.EnsureCreatedAsync();
+    
+    // Seed only in development
+    if (app.Environment.IsDevelopment())
+    {
+        var seeder = new DatabaseSeeder(context);
+        await seeder.SeedAsync();
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Database initialization failed: {ex.Message}");
+    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+    // Continue without failing - let the app start
 }
 
 // Configure the HTTP request pipeline.
@@ -91,9 +105,14 @@ app.UseAuthorization();
 app.MapControllers();
 
 // API Routes will be added here
-app.MapGet("/api/health", () => new { Status = "Healthy", Timestamp = DateTime.UtcNow })
-    .WithName("HealthCheck")
-    .WithOpenApi();
+app.MapGet("/api/health", () => new { 
+    Status = "Healthy", 
+    Timestamp = DateTime.UtcNow,
+    Environment = app.Environment.EnvironmentName,
+    Version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString()
+})
+.WithName("HealthCheck")
+.WithOpenApi();
 
 app.Run();
 
