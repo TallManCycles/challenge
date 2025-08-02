@@ -73,6 +73,31 @@ try
     
     logger.LogInformation("Initializing database...");
     
+    // Debug: Check directory and permissions
+    var connectionString = app.Configuration.GetConnectionString("DefaultConnection");
+    logger.LogInformation("Connection string: {ConnectionString}", connectionString);
+    
+    // Ensure database directory exists
+    var dbPath = connectionString?.Split('=').LastOrDefault();
+    if (!string.IsNullOrEmpty(dbPath))
+    {
+        var dbDir = Path.GetDirectoryName(dbPath);
+        if (!string.IsNullOrEmpty(dbDir))
+        {
+            logger.LogInformation("Checking database directory: {DbDir}", dbDir);
+            
+            if (!Directory.Exists(dbDir))
+            {
+                logger.LogInformation("Creating database directory...");
+                Directory.CreateDirectory(dbDir);
+            }
+            
+            // Log directory permissions
+            var dirInfo = new DirectoryInfo(dbDir);
+            logger.LogInformation("Directory exists: {Exists}", dirInfo.Exists);
+        }
+    }
+    
     // Apply any pending migrations
     await context.Database.MigrateAsync();
     

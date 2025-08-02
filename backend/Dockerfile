@@ -23,8 +23,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy the published app
 COPY --from=build /app/publish ./
 
-# Create directory for SQLite database with proper permissions
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+# Set ownership of app directory (data directory will be mounted)
+RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
