@@ -196,7 +196,7 @@ describe('ChallengeDetailView', () => {
 
   describe('User Progress Display', () => {
     it('calculates and displays user progress correctly', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       // Check progress card content
@@ -208,7 +208,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('shows correct progress bar width', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       const progressBar = wrapper.find('.bg-white.h-2.rounded-full')
@@ -217,7 +217,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('displays challenge type correctly', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       expect(wrapper.text()).toContain('Distance')
@@ -227,10 +227,10 @@ describe('ChallengeDetailView', () => {
 
   describe('Recent Activities', () => {
     it('renders recent activities list', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
-      const activitiesH3 = wrapper.findAll('h3').find(h3 => h3.text() === 'Recent Activities')
+      const activitiesH3 = wrapper.findAll('h3').find((h3: any) => h3.text() === 'Recent Activities')
       expect(activitiesH3).toBeDefined()
       
       // Check that activities are displayed
@@ -241,7 +241,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('formats activity duration correctly', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       expect(wrapper.text()).toContain('45 min') // 2700 seconds = 45 minutes
@@ -249,7 +249,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('displays relative time correctly', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       // Activities from the past should show some time ago
@@ -260,7 +260,7 @@ describe('ChallengeDetailView', () => {
       const mockService = vi.mocked((await import('../services/challenge')).challengeService)
       mockService.getChallengeActivities.mockResolvedValueOnce([])
 
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       expect(wrapper.text()).toContain('No recent activities')
@@ -269,11 +269,11 @@ describe('ChallengeDetailView', () => {
 
   describe('Leaderboard', () => {
     it('renders leaderboard with correct positions', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       // Check leaderboard section exists
-      const leaderboardH3 = wrapper.findAll('h3').find(h3 => h3.text() === 'Leaderboard')
+      const leaderboardH3 = wrapper.findAll('h3').find((h3: any) => h3.text() === 'Leaderboard')
       expect(leaderboardH3).toBeDefined()
 
       // Check positions are displayed
@@ -285,7 +285,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('highlights current user correctly', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       // Current user should be highlighted with blue background
@@ -295,7 +295,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('shows crown icon for first place', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       const crownIcon = wrapper.find('.text-yellow-500 svg')
@@ -303,7 +303,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('shows correct position colors', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       // Gold for 1st place
@@ -323,7 +323,7 @@ describe('ChallengeDetailView', () => {
       const mockService = vi.mocked((await import('../services/challenge')).challengeService)
       mockService.getChallengeLeaderboard.mockResolvedValueOnce([])
 
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       expect(wrapper.text()).toContain('No participants yet')
@@ -332,15 +332,15 @@ describe('ChallengeDetailView', () => {
 
   describe('Progress Comparison Chart', () => {
     it('renders progress comparison section', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
-      const chartH3 = wrapper.findAll('h3').find(h3 => h3.text() === 'Progress Comparison')
+      const chartH3 = wrapper.findAll('h3').find((h3: any) => h3.text() === 'Progress Comparison')
       expect(chartH3).toBeDefined()
     })
 
     it('shows chart legend with correct users', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       expect(wrapper.text()).toContain('You')
@@ -350,7 +350,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('displays chart placeholder', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       expect(wrapper.text()).toContain('Progress chart will be displayed here')
@@ -359,7 +359,7 @@ describe('ChallengeDetailView', () => {
 
   describe('Navigation', () => {
     it('navigates back to dashboard when back button is clicked', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       const routerPushSpy = vi.spyOn(router, 'push')
@@ -430,7 +430,7 @@ describe('ChallengeDetailView', () => {
       const mockService = vi.mocked((await import('../services/challenge')).challengeService)
       mockService.getChallenge.mockResolvedValueOnce(elevationChallenge)
 
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       expect(wrapper.text()).toContain('Elevation')
@@ -441,10 +441,10 @@ describe('ChallengeDetailView', () => {
 
   describe('User Interaction', () => {
     it('shows View Full Leaderboard button', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
-      const fullLeaderboardButton = wrapper.findAll('button').find(btn => 
+      const fullLeaderboardButton = wrapper.findAll('button').find((btn: any) => 
         btn.text() === 'View Full Leaderboard'
       )
       expect(fullLeaderboardButton).toBeDefined()
@@ -453,7 +453,7 @@ describe('ChallengeDetailView', () => {
 
   describe('Accessibility', () => {
     it('has proper heading structure', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       const h1 = wrapper.find('h1')
@@ -465,7 +465,7 @@ describe('ChallengeDetailView', () => {
     })
 
     it('has proper button accessibility', async () => {
-      const wrapper = createWrapper()
+      const wrapper = await createWrapper()
       await flushPromises()
 
       const backButton = wrapper.find('[data-testid="back-button"]')
