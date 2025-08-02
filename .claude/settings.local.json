@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
       "Bash(mkdir:*)",
@@ -26,7 +27,11 @@
       "Bash(npm run lint)",
       "Bash(npm run type-check:*)",
       "Bash(npm run test:unit:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(ls:*)",
+      "Bash(npm run build:*)",
+      "Bash(mv:*)",
+      "Bash(git restore:*)"
     ],
     "deny": []
   }

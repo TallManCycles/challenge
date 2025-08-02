@@ -1,6 +1,8 @@
 import type {
   Challenge,
   ChallengeDetails,
+  ChallengeActivity,
+  ChallengeLeaderboard,
   CreateChallengeRequest,
   UpdateChallengeRequest,
   JoinChallengeRequest
@@ -81,6 +83,14 @@ class ChallengeService {
     return await this.makeRequest<{ message: string }>(`/challenge/${id}/leave`, {
       method: 'DELETE',
     })
+  }
+
+  async getChallengeActivities(id: number, limit: number = 10): Promise<ChallengeActivity[]> {
+    return await this.makeRequest<ChallengeActivity[]>(`/challenge/${id}/activities?limit=${limit}`)
+  }
+
+  async getChallengeLeaderboard(id: number): Promise<ChallengeLeaderboard[]> {
+    return await this.makeRequest<ChallengeLeaderboard[]>(`/challenge/${id}/leaderboard`)
   }
 }
 

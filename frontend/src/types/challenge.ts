@@ -29,6 +29,7 @@ export interface ChallengeParticipant {
   joinedAt: string
   currentTotal: number
   lastActivityDate?: string
+  isCurrentUser?: boolean
 }
 
 export interface ChallengeDetails extends Challenge {
@@ -55,4 +56,26 @@ export interface UpdateChallengeRequest {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface JoinChallengeRequest {
   // Empty for now, can be extended later
+}
+
+export interface ChallengeActivity {
+  id: number
+  userId: number
+  username: string
+  fullName?: string
+  activityName: string
+  distance: number
+  elevationGain: number
+  movingTime: number
+  activityDate: string
+}
+
+export interface ChallengeLeaderboard {
+  position: number
+  userId: number
+  username: string
+  fullName?: string
+  currentTotal: number
+  isCurrentUser: boolean
+  lastActivityDate?: string
 }

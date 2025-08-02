@@ -91,7 +91,8 @@ public class ChallengeController : ControllerBase
                     FullName = p.User.FullName,
                     JoinedAt = p.JoinedAt,
                     CurrentTotal = p.CurrentTotal,
-                    LastActivityDate = p.LastActivityDate
+                    LastActivityDate = p.LastActivityDate,
+                    IsCurrentUser = p.UserId == currentUserId
                 }).ToList()
             })
             .FirstOrDefaultAsync();
@@ -305,5 +306,75 @@ public class ChallengeController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { message = "Successfully left challenge" });
+    }
+
+    [HttpGet("{id}/activities")]
+    public async Task<ActionResult<IEnumerable<ChallengeActivityResponse>>> GetChallengeActivities(int id, [FromQuery] int limit = 10)
+    {
+        var challenge = await _context.Challenges.FindAsync(id);
+        if (challenge == null)
+        {
+            return NotFound();
+        }
+
+        // Get recent activities from challenge participants
+        var activities = await _context.Activities
+            .Include(a => a.User)
+            .Where(a => a.User.ChallengeParticipations.Any(cp => cp.ChallengeId == id) && 
+                       a.ActivityDate >= challenge.StartDate && 
+                       a.ActivityDate <= challenge.EndDate)
+            .OrderByDescending(a => a.ActivityDate)
+            .Take(limit)
+            .Select(a => new ChallengeActivityResponse
+            {
+                Id = a.Id,
+                UserId = a.UserId,
+                Username = a.User.Username,
+                FullName = a.User.FullName,
+                ActivityName = a.ActivityName,
+                Distance = a.Distance,
+                ElevationGain = a.ElevationGain,
+                MovingTime = a.MovingTime,
+                ActivityDate = a.ActivityDate
+            })
+            .ToListAsync();
+
+        return Ok(activities);
+    }
+
+    [HttpGet("{id}/leaderboard")]
+    public async Task<ActionResult<IEnumerable<ChallengeLeaderboardResponse>>> GetChallengeLeaderboard(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        
+        var challenge = await _context.Challenges.FindAsync(id);
+        if (challenge == null)
+        {
+            return NotFound();
+        }
+
+        var participants = await _context.ChallengeParticipants
+            .Include(cp => cp.User)
+            .Where(cp => cp.ChallengeId == id)
+            .OrderByDescending(cp => cp.CurrentTotal)
+            .Select(cp => new ChallengeLeaderboardResponse
+            {
+                Position = 0, // Will be set below
+                UserId = cp.UserId,
+                Username = cp.User.Username,
+                FullName = cp.User.FullName,
+                CurrentTotal = cp.CurrentTotal,
+                IsCurrentUser = cp.UserId == currentUserId,
+                LastActivityDate = cp.LastActivityDate
+            })
+            .ToListAsync();
+
+        // Set positions after retrieving from database
+        for (int i = 0; i < participants.Count; i++)
+        {
+            participants[i].Position = i + 1;
+        }
+
+        return Ok(participants);
     }
 }

@@ -414,6 +414,298 @@ public class ChallengeControllerTests
         Assert.That(result, Is.InstanceOf<NotFoundObjectResult>());
     }
 
+    [Test]
+    public async Task JoinChallenge_ExpiredChallenge_ReturnsBadRequest()
+    {
+        var expiredChallenge = new Challenge
+        {
+            Title = "Expired Challenge",
+            Description = "Description",
+            CreatedById = _otherUser.Id,
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(-10),
+            EndDate = DateTime.UtcNow.AddDays(-1), // Ended yesterday
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Challenges.Add(expiredChallenge);
+        await _context.SaveChangesAsync();
+
+        var request = new JoinChallengeRequest();
+        var result = await _controller.JoinChallenge(expiredChallenge.Id, request);
+        
+        Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
+    }
+
+    [Test]
+    public async Task JoinChallenge_AlreadyParticipating_ReturnsBadRequest()
+    {
+        var challenge = new Challenge
+        {
+            Title = "Already Joined",
+            Description = "Description",
+            CreatedById = _otherUser.Id,
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(-1),
+            EndDate = DateTime.UtcNow.AddDays(7),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Challenges.Add(challenge);
+        await _context.SaveChangesAsync();
+
+        // First join
+        var participant = new ChallengeParticipant
+        {
+            ChallengeId = challenge.Id,
+            UserId = _testUser.Id,
+            JoinedAt = DateTime.UtcNow,
+            CurrentTotal = 0
+        };
+        _context.ChallengeParticipants.Add(participant);
+        await _context.SaveChangesAsync();
+
+        // Try to join again
+        var request = new JoinChallengeRequest();
+        var result = await _controller.JoinChallenge(challenge.Id, request);
+        
+        Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
+    }
+
+    [Test]
+    public async Task JoinChallenge_NonExistentChallenge_ReturnsNotFound()
+    {
+        var request = new JoinChallengeRequest();
+        var result = await _controller.JoinChallenge(999, request);
+        
+        Assert.That(result, Is.InstanceOf<NotFoundResult>());
+    }
+
+    [Test]
+    public async Task GetChallengeActivities_ValidChallenge_ReturnsActivities()
+    {
+        var challenge = new Challenge
+        {
+            Title = "Activity Test",
+            Description = "Description",
+            CreatedById = _testUser.Id,
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(-5),
+            EndDate = DateTime.UtcNow.AddDays(7),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Challenges.Add(challenge);
+        await _context.SaveChangesAsync();
+
+        // Add participant
+        var participant = new ChallengeParticipant
+        {
+            ChallengeId = challenge.Id,
+            UserId = _testUser.Id,
+            JoinedAt = DateTime.UtcNow.AddDays(-4),
+            CurrentTotal = 10
+        };
+        _context.ChallengeParticipants.Add(participant);
+
+        // Add activities
+        var activity1 = new Activity
+        {
+            UserId = _testUser.Id,
+            GarminActivityId = "garmin-123",
+            ActivityName = "Morning Run",
+            Distance = 5.0m,
+            ElevationGain = 100m,
+            MovingTime = 1800,
+            ActivityDate = DateTime.UtcNow.AddDays(-2),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var activity2 = new Activity
+        {
+            UserId = _testUser.Id,
+            GarminActivityId = "garmin-456",
+            ActivityName = "Evening Bike",
+            Distance = 20.0m,
+            ElevationGain = 300m,
+            MovingTime = 3600,
+            ActivityDate = DateTime.UtcNow.AddDays(-1),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Activities.AddRange(activity1, activity2);
+        await _context.SaveChangesAsync();
+
+        var result = await _controller.GetChallengeActivities(challenge.Id);
+        
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        var okResult = (OkObjectResult)result.Result!;
+        var activities = (IEnumerable<ChallengeActivityResponse>)okResult.Value!;
+        Assert.That(activities.Count(), Is.EqualTo(2));
+        Assert.That(activities.Any(a => a.ActivityName == "Morning Run"), Is.True);
+        Assert.That(activities.Any(a => a.ActivityName == "Evening Bike"), Is.True);
+    }
+
+    [Test]
+    public async Task GetChallengeActivities_NonExistentChallenge_ReturnsNotFound()
+    {
+        var result = await _controller.GetChallengeActivities(999);
+        
+        Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+    }
+
+    [Test]
+    public async Task GetChallengeLeaderboard_ValidChallenge_ReturnsLeaderboard()
+    {
+        var challenge = new Challenge
+        {
+            Title = "Leaderboard Test",
+            Description = "Description",
+            CreatedById = _testUser.Id,
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(-5),
+            EndDate = DateTime.UtcNow.AddDays(7),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Challenges.Add(challenge);
+        await _context.SaveChangesAsync();
+
+        // Add participants with different totals
+        var participant1 = new ChallengeParticipant
+        {
+            ChallengeId = challenge.Id,
+            UserId = _testUser.Id,
+            JoinedAt = DateTime.UtcNow.AddDays(-4),
+            CurrentTotal = 50.5m
+        };
+
+        var participant2 = new ChallengeParticipant
+        {
+            ChallengeId = challenge.Id,
+            UserId = _otherUser.Id,
+            JoinedAt = DateTime.UtcNow.AddDays(-3),
+            CurrentTotal = 75.2m
+        };
+
+        _context.ChallengeParticipants.AddRange(participant1, participant2);
+        await _context.SaveChangesAsync();
+
+        var result = await _controller.GetChallengeLeaderboard(challenge.Id);
+        
+        Assert.That(result.Result, Is.InstanceOf<OkObjectResult>());
+        var okResult = (OkObjectResult)result.Result!;
+        var leaderboard = (IEnumerable<ChallengeLeaderboardResponse>)okResult.Value!;
+        var leaderboardList = leaderboard.ToList();
+        
+        Assert.That(leaderboardList.Count, Is.EqualTo(2));
+        
+        // Should be ordered by CurrentTotal descending
+        Assert.That(leaderboardList[0].Position, Is.EqualTo(1));
+        Assert.That(leaderboardList[0].CurrentTotal, Is.EqualTo(75.2m));
+        Assert.That(leaderboardList[0].Username, Is.EqualTo(_otherUser.Username));
+        Assert.That(leaderboardList[0].IsCurrentUser, Is.False);
+        
+        Assert.That(leaderboardList[1].Position, Is.EqualTo(2));
+        Assert.That(leaderboardList[1].CurrentTotal, Is.EqualTo(50.5m));
+        Assert.That(leaderboardList[1].Username, Is.EqualTo(_testUser.Username));
+        Assert.That(leaderboardList[1].IsCurrentUser, Is.True);
+    }
+
+    [Test]
+    public async Task GetChallengeLeaderboard_NonExistentChallenge_ReturnsNotFound()
+    {
+        var result = await _controller.GetChallengeLeaderboard(999);
+        
+        Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+    }
+
+    [Test]
+    public async Task CreateChallenge_NonExistentUser_ReturnsUnauthorized()
+    {
+        // Setup controller with non-existent user ID
+        SetupAuthenticatedUser(999, "nonexistent@example.com", "nonexistent");
+        
+        var request = new CreateChallengeRequest
+        {
+            Title = "Test Challenge",
+            Description = "Description",
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(8)
+        };
+
+        var result = await _controller.CreateChallenge(request);
+        
+        Assert.That(result.Result, Is.InstanceOf<UnauthorizedResult>());
+    }
+
+    [Test]
+    public async Task UpdateChallenge_NonExistentChallenge_ReturnsNotFound()
+    {
+        var request = new UpdateChallengeRequest
+        {
+            Title = "Updated Title",
+            Description = "Updated Description",
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(1),
+            EndDate = DateTime.UtcNow.AddDays(8)
+        };
+
+        var result = await _controller.UpdateChallenge(999, request);
+        
+        Assert.That(result.Result, Is.InstanceOf<NotFoundResult>());
+    }
+
+    [Test]
+    public async Task UpdateChallenge_InvalidDates_ReturnsBadRequest()
+    {
+        var challenge = new Challenge
+        {
+            Title = "Test Challenge",
+            Description = "Description",
+            CreatedById = _testUser.Id,
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(-1),
+            EndDate = DateTime.UtcNow.AddDays(7),
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        _context.Challenges.Add(challenge);
+        await _context.SaveChangesAsync();
+
+        var request = new UpdateChallengeRequest
+        {
+            Title = "Updated Title",
+            Description = "Updated Description",
+            ChallengeType = ChallengeType.Distance,
+            StartDate = DateTime.UtcNow.AddDays(10), // End before start
+            EndDate = DateTime.UtcNow.AddDays(5)
+        };
+
+        var result = await _controller.UpdateChallenge(challenge.Id, request);
+        
+        Assert.That(result.Result, Is.InstanceOf<BadRequestObjectResult>());
+    }
+
+    [Test]
+    public async Task DeleteChallenge_NonExistentChallenge_ReturnsNotFound()
+    {
+        var result = await _controller.DeleteChallenge(999);
+        
+        Assert.That(result, Is.InstanceOf<NotFoundResult>());
+    }
+
     private void SetupAuthenticatedUser(int userId, string email, string username)
     {
         var claims = new List<Claim>
