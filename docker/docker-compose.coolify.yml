@@ -5,7 +5,9 @@ services:
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-garmin_challenge}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      # --- CHANGE: Removed default password for security. ---
+      # This variable MUST be set in your .env file.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD?Error: POSTGRES_PASSWORD is not set in the environment.}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -17,6 +19,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 5s
+
   backend:
     build:
       context: ./backend
@@ -24,12 +27,14 @@ services:
     container_name: ${BACKEND_CONTAINER_NAME:-garmin-challenge-backend}
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - ConnectionStrings__DefaultConnection=Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-garmin_challenge};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
-      - Auth__JwtKey=${JWT_KEY}
-      - Auth__Salt=${AUTH_SALT}
-      - Frontend__AllowedOrigins__0=${FRONTEND_ORIGIN_0:-https://your-domain.com}
-      - Frontend__AllowedOrigins__1=${FRONTEND_ORIGIN_1:-https://www.your-domain.com}
-      - Frontend__AllowedOrigins__2=${FRONTEND_ORIGIN_2:-http://localhost:3000}
+      # --- CHANGE: Enforced required variables to prevent running with empty secrets. ---
+      # These variables MUST be set in your .env file.
+      - ConnectionStrings__DefaultConnection=Host=${POSTGRES_HOST:-postgres};Port=${POSTGRES_PORT:-5432};Database=${POSTGRES_DB:-garmin_challenge};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD?Error: POSTGRES_PASSWORD is not set.}
+      - Auth__JwtKey=${JWT_KEY?Error: JWT_KEY is not set.}
+      - Auth__Salt=${AUTH_SALT?Error: AUTH_SALT is not set.}
+      # Allowed origins for production. Set these in your .env file.
+      - Frontend__AllowedOrigins__0=${FRONTEND_ORIGIN_0?Error: FRONTEND_ORIGIN_0 is not set.}
+      - Frontend__AllowedOrigins__1=${FRONTEND_ORIGIN_1} # This one is optional
       - Logging__LogLevel__Default=Warning
       - Logging__LogLevel__Microsoft_AspNetCore=Warning
     ports:
@@ -44,19 +49,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
+        # This build-time argument correctly sets the backend URL for the frontend app.
+        # For a production deployment, this MUST be the public URL of your backend API.
+        # The default 'http://localhost:8080' is only suitable for local testing.
         VITE_APP_API_ENDPOINT: ${VITE_APP_API_ENDPOINT:-http://localhost:8080}
     container_name: ${FRONTEND_CONTAINER_NAME:-garmin-challenge-frontend}
     ports:
       - "${FRONTEND_PORT:-80}:80"
-    environment:
-      - VITE_APP_API_ENDPOINT=${VITE_APP_API_ENDPOINT:-http://localhost:8080}
+    # --- CHANGE: Removed redundant 'environment' section. ---
+    # Runtime environment variables are not read by the static files in the Nginx container.
+    # The 'build.args' above is the correct mechanism.
     depends_on:
-      - backend
+      # --- CHANGE: Wait for the backend to be healthy, not just started. ---
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/"]
