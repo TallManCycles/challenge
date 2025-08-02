@@ -17,15 +17,14 @@ WORKDIR /app
 # Install curl for health checks (before switching to non-root user)
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Create directory for SQLite database with proper permissions
-RUN mkdir -p /app/data && chmod 755 /app/data
+# Create a non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Copy the published app
 COPY --from=build /app/publish ./
 
-# Create a non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
-RUN chown -R appuser:appuser /app
+# Create directory for SQLite database with proper permissions
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
