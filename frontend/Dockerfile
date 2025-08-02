@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm ci --only=production --prefer-offline
+RUN npm ci --prefer-offline
 
 # Copy source code and build
 COPY . ./
@@ -12,6 +12,9 @@ RUN npm run build
 
 # Use nginx for serving static files
 FROM nginx:alpine AS runtime
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Copy built files to nginx
 COPY --from=build /app/dist /usr/share/nginx/html
