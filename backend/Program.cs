@@ -69,20 +69,27 @@ try
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     
-    // Ensure database is created
-    await context.Database.EnsureCreatedAsync();
+    logger.LogInformation("Initializing database...");
+    
+    // Apply any pending migrations
+    await context.Database.MigrateAsync();
+    
+    logger.LogInformation("Database migration completed successfully.");
     
     // Seed only in development
     if (app.Environment.IsDevelopment())
     {
         var seeder = new DatabaseSeeder(context);
         await seeder.SeedAsync();
+        logger.LogInformation("Database seeding completed.");
     }
 }
 catch (Exception ex)
 {
-    // Continue without failing - let the app start
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogError(ex, "An error occurred while initializing the database. Application will continue but may not function correctly.");
 }
 
 // Configure the HTTP request pipeline.
