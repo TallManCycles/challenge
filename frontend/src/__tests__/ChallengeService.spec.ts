@@ -30,7 +30,7 @@ describe('ChallengeService', () => {
     vi.restoreAllMocks()
   })
 
-  const createMockResponse = (data: any, status: number = 200) => {
+  const createMockResponse = (data: unknown, status: number = 200) => {
     return Promise.resolve({
       ok: status >= 200 && status < 300,
       status,

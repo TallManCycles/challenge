@@ -3,7 +3,6 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import { createRouter, createWebHistory } from 'vue-router'
 import ChallengeDetailView from '../views/ChallengeDetailView.vue'
-import { useAuthStore } from '../stores/auth'
 import type { ChallengeDetails, ChallengeActivity, ChallengeLeaderboard } from '../types/challenge'
 
 // Mock challenge data
@@ -230,7 +229,7 @@ describe('ChallengeDetailView', () => {
       const wrapper = await createWrapper()
       await flushPromises()
 
-      const activitiesH3 = wrapper.findAll('h3').find((h3: any) => h3.text() === 'Recent Activities')
+      const activitiesH3 = wrapper.findAll('h3').find((h3) => h3.text() === 'Recent Activities')
       expect(activitiesH3).toBeDefined()
       
       // Check that activities are displayed
@@ -273,7 +272,7 @@ describe('ChallengeDetailView', () => {
       await flushPromises()
 
       // Check leaderboard section exists
-      const leaderboardH3 = wrapper.findAll('h3').find((h3: any) => h3.text() === 'Leaderboard')
+      const leaderboardH3 = wrapper.findAll('h3').find((h3) => h3.text() === 'Leaderboard')
       expect(leaderboardH3).toBeDefined()
 
       // Check positions are displayed
@@ -335,7 +334,7 @@ describe('ChallengeDetailView', () => {
       const wrapper = await createWrapper()
       await flushPromises()
 
-      const chartH3 = wrapper.findAll('h3').find((h3: any) => h3.text() === 'Progress Comparison')
+      const chartH3 = wrapper.findAll('h3').find((h3) => h3.text() === 'Progress Comparison')
       expect(chartH3).toBeDefined()
     })
 
@@ -377,7 +376,7 @@ describe('ChallengeDetailView', () => {
 
       const routerPushSpy = vi.spyOn(router, 'push')
       
-      const wrapper = createWrapper('999')
+      await createWrapper('999')
       await flushPromises()
 
       expect(routerPushSpy).toHaveBeenCalledWith('/dashboard')
@@ -394,7 +393,7 @@ describe('ChallengeDetailView', () => {
 
       const routerPushSpy = vi.spyOn(router, 'push')
       
-      const wrapper = await createWrapper()
+      await createWrapper()
       await flushPromises()
 
       // Should redirect to dashboard on error without crashing
@@ -412,7 +411,7 @@ describe('ChallengeDetailView', () => {
       mockService.getChallengeActivities.mockResolvedValueOnce(mockActivities)
       mockService.getChallengeLeaderboard.mockResolvedValueOnce(mockLeaderboard)
       
-      const wrapper = await createWrapper('1')
+      await createWrapper('1')
       await flushPromises()
 
       expect(mockService.getChallenge).toHaveBeenCalledWith(1)
@@ -444,7 +443,7 @@ describe('ChallengeDetailView', () => {
       const wrapper = await createWrapper()
       await flushPromises()
 
-      const fullLeaderboardButton = wrapper.findAll('button').find((btn: any) => 
+      const fullLeaderboardButton = wrapper.findAll('button').find((btn) => 
         btn.text() === 'View Full Leaderboard'
       )
       expect(fullLeaderboardButton).toBeDefined()
