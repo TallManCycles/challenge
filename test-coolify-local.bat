@@ -12,9 +12,9 @@ if %errorlevel% neq 0 (
 
 echo.
 echo 2. Copying test environment file...
-copy .env.coolify-test .env
+copy docker\.env.coolify-test .env
 if %errorlevel% neq 0 (
-    echo ERROR: Could not copy .env.coolify-test to .env
+    echo ERROR: Could not copy docker\.env.coolify-test to .env
     pause
     exit /b 1
 )

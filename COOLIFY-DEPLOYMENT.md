@@ -148,5 +148,5 @@ To set up automated deployments:
 
 ## Environment Files Reference
 
-- `.env.coolify` - Template for Coolify environment variables
+- `docker/.env.coolify` - Template for Coolify environment variables
 - `docker/docker-compose.coolify.yml` - Optimized for Coolify deployment

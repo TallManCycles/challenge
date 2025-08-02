@@ -19,7 +19,7 @@ services:
       start_period: 5s
   backend:
     build:
-      context: ../backend
+      context: ./backend
       dockerfile: Dockerfile
     container_name: ${BACKEND_CONTAINER_NAME:-garmin-challenge-backend}
     environment:
@@ -46,7 +46,7 @@ services:
       start_period: 40s
   frontend:
     build:
-      context: ../frontend
+      context: ./frontend
       dockerfile: Dockerfile
       args:
         VITE_APP_API_ENDPOINT: ${VITE_APP_API_ENDPOINT:-http://localhost:8080}

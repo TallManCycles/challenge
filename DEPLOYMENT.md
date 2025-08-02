@@ -56,7 +56,11 @@ docker run -d \
 ```
 backend/
 ├── Dockerfile              # Production Docker build
-├── .env.example            # Environment variable template
+├── docker/
+│   ├── .env.example        # Environment variable template
+│   ├── .env.production     # Production environment template
+│   ├── .env.coolify        # Coolify deployment template
+│   └── .env.coolify-test   # Local Coolify testing
 └── .dockerignore           # Exclude unnecessary files
 
 frontend/
