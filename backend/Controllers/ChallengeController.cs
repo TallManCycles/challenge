@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using backend.Data;
 using backend.Models;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -13,10 +14,12 @@ namespace backend.Controllers;
 public class ChallengeController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IFileLoggingService _logger;
 
-    public ChallengeController(ApplicationDbContext context)
+    public ChallengeController(ApplicationDbContext context, IFileLoggingService logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     private int GetCurrentUserId()
@@ -352,11 +355,12 @@ public class ChallengeController : ControllerBase
         {
             return NotFound();
         }
+        
+        // SQLite does not support expressions of type 'decimal' in ORDER BY clauses. Convert the values to a supported type, or use LINQ to Objects to order the results on the client side.
 
         var participants = await _context.ChallengeParticipants
             .Include(cp => cp.User)
             .Where(cp => cp.ChallengeId == id)
-            .OrderByDescending(cp => cp.CurrentTotal)
             .Select(cp => new ChallengeLeaderboardResponse
             {
                 Position = 0, // Will be set below
@@ -369,12 +373,14 @@ public class ChallengeController : ControllerBase
             })
             .ToListAsync();
 
+        var orderedParticipants = participants.OrderByDescending(cp => cp.CurrentTotal).ToList();
+
         // Set positions after retrieving from database
-        for (int i = 0; i < participants.Count; i++)
+        for (int i = 0; i < orderedParticipants.Count; i++)
         {
-            participants[i].Position = i + 1;
+            orderedParticipants[i].Position = i + 1;
         }
 
-        return Ok(participants);
+        return Ok(orderedParticipants);
     }
 }

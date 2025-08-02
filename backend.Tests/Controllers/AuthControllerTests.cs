@@ -6,6 +6,7 @@ using System.Security.Claims;
 using backend.Controllers;
 using backend.Data;
 using backend.Models;
+using backend.Services;
 using backend.Tests.Helpers;
 
 namespace backend.Tests.Controllers;
@@ -16,13 +17,15 @@ public class AuthControllerTests
     private ApplicationDbContext _context;
     private IConfiguration _configuration;
     private AuthController _controller;
+    private IFileLoggingService _logger;
 
     [SetUp]
     public void Setup()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
         _configuration = TestDbContextFactory.CreateTestConfiguration();
-        _controller = new AuthController(_context, _configuration);
+        _logger = TestDbContextFactory.CreateTestLogger();
+        _controller = new AuthController(_context, _configuration, _logger);
     }
 
     [TearDown]
@@ -97,7 +100,7 @@ public class AuthControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
             var badRequestResult = (BadRequestObjectResult)result;
             var errorResponse = badRequestResult.Value;
-            Assert.That(errorResponse.ToString(), Does.Contain("Email already registered"));
+            Assert.That(errorResponse.ToString(), Does.Contain("Invalid registration details"));
         }
 
         [Test]
@@ -130,7 +133,7 @@ public class AuthControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
             var badRequestResult = (BadRequestObjectResult)result;
             var errorResponse = badRequestResult.Value;
-            Assert.That(errorResponse.ToString(), Does.Contain("Username already taken"));
+            Assert.That(errorResponse.ToString(), Does.Contain("Invalid registration details"));
         }
 
         [Test]
@@ -211,7 +214,7 @@ public class AuthControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
             var badRequestResult = (BadRequestObjectResult)result;
             var errorResponse = badRequestResult.Value;
-            Assert.That(errorResponse.ToString(), Does.Contain("Invalid email or password"));
+            Assert.That(errorResponse.ToString(), Does.Contain("Invalid credentials"));
         }
 
         [Test]
@@ -242,7 +245,7 @@ public class AuthControllerTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
             var badRequestResult = (BadRequestObjectResult)result;
             var errorResponse = badRequestResult.Value;
-            Assert.That(errorResponse.ToString(), Does.Contain("Invalid email or password"));
+            Assert.That(errorResponse.ToString(), Does.Contain("Invalid credentials"));
         }
 
         [Test]
