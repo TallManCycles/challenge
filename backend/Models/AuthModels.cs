@@ -9,7 +9,7 @@ public class LoginRequest
     public string Email { get; set; } = string.Empty;
     
     [Required]
-    [MinLength(6)]
+    [MinLength(1)]
     public string Password { get; set; } = string.Empty;
 }
 
@@ -22,10 +22,13 @@ public class RegisterRequest
     [Required]
     [MinLength(3)]
     [MaxLength(50)]
+    [RegularExpression(@"^[a-zA-Z0-9_-]+$", ErrorMessage = "Username can only contain letters, numbers, underscores, and hyphens")]
     public string Username { get; set; } = string.Empty;
     
     [Required]
-    [MinLength(6)]
+    [MinLength(8)]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$", 
+        ErrorMessage = "Password must be at least 8 characters with uppercase, lowercase, number, and special character")]
     public string Password { get; set; } = string.Empty;
     
     [Required]
@@ -48,7 +51,9 @@ public class ChangePasswordRequest
     public string CurrentPassword { get; set; } = string.Empty;
     
     [Required]
-    [MinLength(6)]
+    [MinLength(8)]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$", 
+        ErrorMessage = "Password must be at least 8 characters with uppercase, lowercase, number, and special character")]
     public string NewPassword { get; set; } = string.Empty;
     
     [Required]
@@ -69,7 +74,9 @@ public class ResetPasswordRequest
     public string ResetToken { get; set; } = string.Empty;
     
     [Required]
-    [MinLength(6)]
+    [MinLength(8)]
+    [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$", 
+        ErrorMessage = "Password must be at least 8 characters with uppercase, lowercase, number, and special character")]
     public string NewPassword { get; set; } = string.Empty;
     
     [Required]

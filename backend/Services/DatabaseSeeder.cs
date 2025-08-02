@@ -25,6 +25,8 @@ public class DatabaseSeeder
         {
             return;
         }
+        
+        const string testPassword = "Password123!";
 
         // Create test users
         var users = new List<User>
@@ -34,7 +36,7 @@ public class DatabaseSeeder
                 Username = "alex_rivera",
                 Email = "alex.rivera@example.com",
                 FullName = "Alex Rivera",
-                PasswordHash = HashPassword("password123"),
+                PasswordHash = HashPassword(testPassword),
                 CreatedAt = DateTime.UtcNow.AddDays(-30),
                 UpdatedAt = DateTime.UtcNow.AddDays(-30)
             },
@@ -43,7 +45,7 @@ public class DatabaseSeeder
                 Username = "mike_johnson",
                 Email = "mike.johnson@example.com",
                 FullName = "Mike Johnson",
-                PasswordHash = HashPassword("password123"),
+                PasswordHash = HashPassword(testPassword),
                 CreatedAt = DateTime.UtcNow.AddDays(-25),
                 UpdatedAt = DateTime.UtcNow.AddDays(-25)
             },
@@ -52,7 +54,7 @@ public class DatabaseSeeder
                 Username = "sarah_chen",
                 Email = "sarah.chen@example.com",
                 FullName = "Sarah Chen",
-                PasswordHash = HashPassword("password123"),
+                PasswordHash = HashPassword(testPassword),
                 CreatedAt = DateTime.UtcNow.AddDays(-20),
                 UpdatedAt = DateTime.UtcNow.AddDays(-20)
             }
@@ -175,9 +177,6 @@ public class DatabaseSeeder
 
     private static string HashPassword(string password)
     {
-        // Simple password hashing - in production, use a proper hashing library like BCrypt
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password + "salt"));
-        return Convert.ToBase64String(hashedBytes);
+        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 }

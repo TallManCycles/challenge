@@ -7,6 +7,7 @@ using System.Security.Claims;
 using backend.Controllers;
 using backend.Data;
 using backend.Models;
+using backend.Services;
 using backend.Tests.Helpers;
 
 namespace backend.Tests.Controllers;
@@ -17,13 +18,15 @@ public class AuthControllerProtectedEndpointsTests
     private ApplicationDbContext _context;
     private IConfiguration _configuration;
     private AuthController _controller;
+    private IFileLoggingService _logger;
 
     [SetUp]
     public void Setup()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
         _configuration = TestDbContextFactory.CreateTestConfiguration();
-        _controller = new AuthController(_context, _configuration);
+        _logger = TestDbContextFactory.CreateTestLogger();
+        _controller = new AuthController(_context, _configuration, _logger);
     }
 
     [TearDown]
@@ -68,10 +71,11 @@ public class AuthControllerProtectedEndpointsTests
             // Assert
             Assert.That(result, Is.InstanceOf<OkObjectResult>());
             
-            // Verify password was updated
+            // Verify password was updated (should now be BCrypt hash)
             var updatedUser = await _context.Users.FindAsync(user.Id);
             Assert.That(updatedUser.PasswordHash, Is.Not.EqualTo(HashPassword("oldpassword")));
-            Assert.That(updatedUser.PasswordHash, Is.EqualTo(HashPassword("newpassword123")));
+            // BCrypt hashes start with $2, verify it's now using BCrypt
+            Assert.That(updatedUser.PasswordHash, Does.StartWith("$2"));
         }
 
         [Test]
@@ -106,7 +110,7 @@ public class AuthControllerProtectedEndpointsTests
             Assert.That(result, Is.InstanceOf<BadRequestObjectResult>());
             var badRequestResult = (BadRequestObjectResult)result;
             var errorResponse = badRequestResult.Value;
-            Assert.That(errorResponse.ToString(), Does.Contain("Current password is incorrect"));
+            Assert.That(errorResponse.ToString(), Does.Contain("Invalid credentials"));
         }
 
         [Test]

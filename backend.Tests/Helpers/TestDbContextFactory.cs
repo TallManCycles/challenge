@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using backend.Data;
+using backend.Services;
 
 namespace backend.Tests.Helpers;
 
@@ -33,5 +34,10 @@ public static class TestDbContextFactory
             .Build();
 
         return configuration;
+    }
+
+    public static IFileLoggingService CreateTestLogger()
+    {
+        return new FileLoggingService();
     }
 }

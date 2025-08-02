@@ -8,6 +8,7 @@ using System.Security.Claims;
 using Microsoft.IdentityModel.Tokens;
 using backend.Data;
 using backend.Models;
+using backend.Services;
 
 namespace backend.Controllers;
 
@@ -17,11 +18,13 @@ public class AuthController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IFileLoggingService _logger;
 
-    public AuthController(ApplicationDbContext context, IConfiguration configuration)
+    public AuthController(ApplicationDbContext context, IConfiguration configuration, IFileLoggingService logger)
     {
         _context = context;
         _configuration = configuration;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -30,12 +33,20 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        // Check if user already exists
-        if (await _context.Users.AnyAsync(u => u.Email == request.Email))
-            return BadRequest(new { message = "Email already registered" });
+        try
+        {
+            // Check if user already exists
+            if (await _context.Users.AnyAsync(u => u.Email == request.Email))
+            {
+                await _logger.LogWarningAsync($"Registration attempt with existing email: {request.Email}", "Auth");
+                return BadRequest(new { message = "Invalid registration details" });
+            }
 
-        if (await _context.Users.AnyAsync(u => u.Username == request.Username))
-            return BadRequest(new { message = "Username already taken" });
+            if (await _context.Users.AnyAsync(u => u.Username == request.Username))
+            {
+                await _logger.LogWarningAsync($"Registration attempt with existing username: {request.Username}", "Auth");
+                return BadRequest(new { message = "Invalid registration details" });
+            }
 
         // Hash password
         var passwordHash = HashPassword(request.Password);
@@ -50,22 +61,30 @@ public class AuthController : ControllerBase
             UpdatedAt = DateTime.UtcNow
         };
 
-        _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
 
-        // Generate JWT token
-        var token = GenerateJwtToken(user);
+            await _logger.LogInfoAsync($"New user registered: {user.Username}", "Auth");
 
-        var response = new AuthResponse
+            // Generate JWT token
+            var token = GenerateJwtToken(user);
+
+            var response = new AuthResponse
+            {
+                UserId = user.Id,
+                Email = user.Email,
+                Username = user.Username,
+                Token = token,
+                TokenExpiry = DateTime.UtcNow.AddHours(24)
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
         {
-            UserId = user.Id,
-            Email = user.Email,
-            Username = user.Username,
-            Token = token,
-            TokenExpiry = DateTime.UtcNow.AddDays(7)
-        };
-
-        return Ok(response);
+            await _logger.LogErrorAsync("Registration failed", ex, "Auth");
+            return BadRequest(new { message = "Registration failed" });
+        }
     }
 
     [HttpPost("login")]
@@ -74,28 +93,50 @@ public class AuthController : ControllerBase
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        // Find user
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
-        if (user == null)
-            return BadRequest(new { message = "Invalid email or password" });
-
-        // Verify password
-        if (!VerifyPassword(request.Password, user.PasswordHash))
-            return BadRequest(new { message = "Invalid email or password" });
-
-        // Generate JWT token
-        var token = GenerateJwtToken(user);
-
-        var response = new AuthResponse
+        try
         {
-            UserId = user.Id,
-            Email = user.Email,
-            Username = user.Username,
-            Token = token,
-            TokenExpiry = DateTime.UtcNow.AddDays(7)
-        };
+            // Find user
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            
+            // Always verify password even if user doesn't exist to prevent timing attacks
+            var passwordValid = user != null && VerifyPassword(request.Password, user.PasswordHash);
+            
+            if (!passwordValid)
+            {
+                await _logger.LogWarningAsync($"Failed login attempt for email: {request.Email}", "Auth");
+                return BadRequest(new { message = "Invalid credentials" });
+            }
 
-        return Ok(response);
+            // Upgrade legacy SHA256 hashes to BCrypt on successful login
+            if (user != null && !user.PasswordHash.StartsWith("$2"))
+            {
+                user.PasswordHash = HashPassword(request.Password);
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                await _logger.LogInfoAsync($"Password hash upgraded for user: {user.Username}", "Auth");
+            }
+
+            await _logger.LogInfoAsync($"Successful login for user: {user!.Username}", "Auth");
+
+            // Generate JWT token
+            var token = GenerateJwtToken(user);
+
+            var response = new AuthResponse
+            {
+                UserId = user.Id,
+                Email = user.Email,
+                Username = user.Username,
+                Token = token,
+                TokenExpiry = DateTime.UtcNow.AddHours(24)
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogErrorAsync("Login failed", ex, "Auth");
+            return BadRequest(new { message = "Invalid credentials" });
+        }
     }
 
     [HttpPost("forgot-password")]
@@ -116,9 +157,11 @@ public class AuthController : ControllerBase
 
         await _context.SaveChangesAsync();
 
+        await _logger.LogInfoAsync($"Password reset requested for user: {user.Username}", "Auth");
+
         // In a real application, you would send an email here
-        // For now, we'll just return the token (remove this in production)
-        return Ok(new { message = "Password reset token generated", resetToken = resetToken });
+        // Never expose the reset token in the API response
+        return Ok(new { message = "If an account with this email exists, a password reset link has been sent." });
     }
 
     [HttpPost("reset-password")]
@@ -141,6 +184,7 @@ public class AuthController : ControllerBase
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await _logger.LogInfoAsync($"Password reset completed for user: {user.Username}", "Auth");
 
         return Ok(new { message = "Password reset successfully" });
     }
@@ -163,13 +207,17 @@ public class AuthController : ControllerBase
 
         // Verify current password
         if (!VerifyPassword(request.CurrentPassword, user.PasswordHash))
-            return BadRequest(new { message = "Current password is incorrect" });
+        {
+            await _logger.LogWarningAsync($"Failed password change attempt for user: {user.Username}", "Auth");
+            return BadRequest(new { message = "Invalid credentials" });
+        }
 
         // Hash new password
         user.PasswordHash = HashPassword(request.NewPassword);
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await _logger.LogInfoAsync($"Password changed for user: {user.Username}", "Auth");
 
         return Ok(new { message = "Password changed successfully" });
     }
@@ -236,18 +284,32 @@ public class AuthController : ControllerBase
 
     private string HashPassword(string password)
     {
-        using var sha256 = SHA256.Create();
-        var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password + GetSalt()));
-        return Convert.ToBase64String(hashedBytes);
+        return BCrypt.Net.BCrypt.HashPassword(password, 12);
     }
 
     private bool VerifyPassword(string password, string hash)
     {
-        var computedHash = HashPassword(password);
-        return computedHash == hash;
+        try
+        {
+            // Try BCrypt first (new hashes)
+            if (hash.StartsWith("$2"))
+            {
+                return BCrypt.Net.BCrypt.Verify(password, hash);
+            }
+            
+            // Fallback to SHA256 for existing users (legacy hashes)
+            using var sha256 = SHA256.Create();
+            var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password + GetLegacySalt()));
+            var legacyHash = Convert.ToBase64String(hashedBytes);
+            return legacyHash == hash;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
-    private string GetSalt()
+    private string GetLegacySalt()
     {
         return _configuration["Auth:Salt"] ?? "DefaultSalt123!";
     }
@@ -273,7 +335,7 @@ public class AuthController : ControllerBase
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Username)
             }),
-            Expires = DateTime.UtcNow.AddDays(7),
+            Expires = DateTime.UtcNow.AddHours(24),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
 

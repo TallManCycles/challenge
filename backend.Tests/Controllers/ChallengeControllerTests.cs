@@ -6,6 +6,7 @@ using System.Security.Claims;
 using backend.Controllers;
 using backend.Data;
 using backend.Models;
+using backend.Services;
 using backend.Tests.Helpers;
 
 namespace backend.Tests.Controllers;
@@ -17,12 +18,14 @@ public class ChallengeControllerTests
     private ChallengeController _controller = null!;
     private User _testUser = null!;
     private User _otherUser = null!;
+    private IFileLoggingService _logger;
 
     [SetUp]
     public async Task SetUp()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
-        _controller = new ChallengeController(_context);
+        _logger = TestDbContextFactory.CreateTestLogger();
+        _controller = new ChallengeController(_context, _logger);
 
         _testUser = new User
         {
