@@ -40,6 +40,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// Configure Data Protection for container environments
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo("/app/keys"))
+    .SetApplicationName("GarminChallenge");
+
 // Add CORS for frontend integration
 var allowedOrigins = builder.Configuration.GetSection("Frontend:AllowedOrigins").Get<string[]>()
     ?? new[] { "http://localhost:5173", "http://localhost:3000" };
@@ -113,7 +118,11 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
-app.UseHttpsRedirection();
+// Only use HTTPS redirection in development or when behind a reverse proxy
+if (app.Environment.IsDevelopment() || !string.IsNullOrEmpty(app.Configuration["ASPNETCORE_HTTPS_PORT"]))
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
