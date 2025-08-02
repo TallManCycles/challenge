@@ -19,7 +19,8 @@ Object.defineProperty(window, 'localStorage', {
 
 describe('ChallengeService', () => {
   const mockToken = 'mock-jwt-token'
-  const baseUrl = 'http://localhost:5123/api'
+  // Use the same logic as the actual service to determine the base URL
+  const baseUrl = `${import.meta.env.VITE_APP_API_ENDPOINT || 'http://localhost:5000'}/api`
 
   beforeEach(() => {
     vi.clearAllMocks()
