@@ -317,16 +317,10 @@ public class ChallengeController : ControllerBase
             return NotFound();
         }
 
-        // Get participants of this challenge
-        var participantUserIds = await _context.ChallengeParticipants
-            .Where(cp => cp.ChallengeId == id)
-            .Select(cp => cp.UserId)
-            .ToListAsync();
-
         // Get recent activities from challenge participants
         var activities = await _context.Activities
             .Include(a => a.User)
-            .Where(a => participantUserIds.Contains(a.UserId) && 
+            .Where(a => a.User.ChallengeParticipations.Any(cp => cp.ChallengeId == id) && 
                        a.ActivityDate >= challenge.StartDate && 
                        a.ActivityDate <= challenge.EndDate)
             .OrderByDescending(a => a.ActivityDate)
@@ -362,6 +356,7 @@ public class ChallengeController : ControllerBase
         var participants = await _context.ChallengeParticipants
             .Include(cp => cp.User)
             .Where(cp => cp.ChallengeId == id)
+            .OrderByDescending(cp => cp.CurrentTotal)
             .Select(cp => new ChallengeLeaderboardResponse
             {
                 Position = 0, // Will be set below
@@ -373,9 +368,6 @@ public class ChallengeController : ControllerBase
                 LastActivityDate = cp.LastActivityDate
             })
             .ToListAsync();
-
-        // Order by CurrentTotal in memory (SQLite doesn't support ordering by decimal in SQL)
-        participants = participants.OrderByDescending(p => p.CurrentTotal).ToList();
 
         // Set positions after retrieving from database
         for (int i = 0; i < participants.Count; i++)
