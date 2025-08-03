@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Challenge> Challenges { get; set; }
     public DbSet<ChallengeParticipant> ChallengeParticipants { get; set; }
     public DbSet<Activity> Activities { get; set; }
+    public DbSet<GarminOAuthToken> GarminOAuthTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -82,6 +83,32 @@ public class ApplicationDbContext : DbContext
             
             entity.HasOne(e => e.User)
                 .WithMany(u => u.Activities)
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // GarminOAuthToken entity configuration
+        modelBuilder.Entity<GarminOAuthToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.State).IsUnique();
+            entity.HasIndex(e => e.RequestToken);
+            
+            entity.Property(e => e.RequestToken).HasMaxLength(500);
+            entity.Property(e => e.RequestTokenSecret).HasMaxLength(500);
+            entity.Property(e => e.AccessToken).HasMaxLength(500);
+            entity.Property(e => e.AccessTokenSecret).HasMaxLength(500);
+            entity.Property(e => e.State).HasMaxLength(100);
+            entity.Property(e => e.OAuthVerifier).HasMaxLength(100);
+            
+            // Set expiration default to 10 minutes from creation (PostgreSQL syntax)
+            entity.Property(e => e.ExpiresAt)
+                .HasDefaultValueSql("NOW() + INTERVAL '10 minutes'");
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

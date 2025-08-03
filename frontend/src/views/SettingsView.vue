@@ -154,11 +154,27 @@
               <button
                 type="button"
                 @click="handleIntegrationClick('Garmin Connect')"
-                class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors mb-2"
+                :disabled="isConnectingGarmin"
+                :class="[
+                  'w-full py-2 px-4 rounded-lg font-medium transition-colors mb-2',
+                  garminStatus.isConnected 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-red-600 hover:bg-red-700 text-white',
+                  isConnectingGarmin && 'opacity-50 cursor-not-allowed'
+                ]"
               >
-                Connect
+                <svg v-if="isConnectingGarmin" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isConnectingGarmin ? 'Processing...' : (garminStatus.isConnected ? 'Disconnect' : 'Connect') }}
               </button>
-              <p class="text-xs text-gray-400">Not Connected</p>
+              <p class="text-xs text-gray-400">
+                {{ garminStatus.isConnected ? 'Connected' : 'Not Connected' }}
+                <span v-if="garminStatus.isConnected && garminStatus.connectedAt" class="block">
+                  {{ new Date(garminStatus.connectedAt).toLocaleDateString() }}
+                </span>
+              </p>
             </div>
 
             <!-- Strava -->
@@ -262,6 +278,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { authService } from '../services/auth'
+import { garminService, type GarminOAuthStatus } from '../services/garmin'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -283,6 +300,10 @@ const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error' | 'info'>('info')
 
+// Garmin integration state
+const garminStatus = ref<GarminOAuthStatus>({ isConnected: false })
+const isConnectingGarmin = ref(false)
+
 // Load current user data
 onMounted(async () => {
   try {
@@ -292,7 +313,37 @@ onMounted(async () => {
   } catch {
     showToastMessage('Failed to load user data', 'error')
   }
+
+  // Load Garmin connection status
+  await loadGarminStatus()
+
+  // Check for OAuth callback parameters
+  checkOAuthCallback()
 })
+
+const loadGarminStatus = async () => {
+  try {
+    garminStatus.value = await garminService.getOAuthStatus()
+  } catch {
+    console.warn('Failed to load Garmin status')
+  }
+}
+
+const checkOAuthCallback = () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const garminResult = urlParams.get('garmin')
+  
+  if (garminResult === 'success') {
+    showToastMessage('Garmin Connect connected successfully!', 'success')
+    loadGarminStatus() // Refresh status
+    // Clean up URL
+    window.history.replaceState({}, document.title, '/settings')
+  } else if (garminResult === 'error') {
+    showToastMessage('Failed to connect to Garmin Connect. Please try again.', 'error')
+    // Clean up URL
+    window.history.replaceState({}, document.title, '/settings')
+  }
+}
 
 const logout = () => {
   authStore.logout()
@@ -313,8 +364,42 @@ const hideToast = () => {
   showToast.value = false
 }
 
-const handleIntegrationClick = (service: string) => {
-  showToastMessage(`${service} integration is not implemented yet`, 'info')
+const handleIntegrationClick = async (service: string) => {
+  if (service === 'Garmin Connect') {
+    await handleGarminIntegration()
+  } else {
+    showToastMessage(`${service} integration is not implemented yet`, 'info')
+  }
+}
+
+const handleGarminIntegration = async () => {
+  if (garminStatus.value.isConnected) {
+    // Disconnect Garmin
+    try {
+      isConnectingGarmin.value = true
+      await garminService.disconnectGarmin()
+      garminStatus.value = { isConnected: false }
+      showToastMessage('Garmin Connect disconnected successfully', 'success')
+    } catch (error) {
+      console.error('Failed to disconnect Garmin:', error)
+      showToastMessage('Failed to disconnect Garmin Connect', 'error')
+    } finally {
+      isConnectingGarmin.value = false
+    }
+  } else {
+    // Connect to Garmin
+    try {
+      isConnectingGarmin.value = true
+      showToastMessage('Redirecting to Garmin Connect...', 'info')
+      
+      const oauthData = await garminService.initiateOAuth()
+      garminService.redirectToGarmin(oauthData.url)
+    } catch (error) {
+      console.error('Failed to initiate Garmin OAuth:', error)
+      showToastMessage('Failed to connect to Garmin Connect', 'error')
+      isConnectingGarmin.value = false
+    }
+  }
 }
 
 const cancelChanges = async () => {

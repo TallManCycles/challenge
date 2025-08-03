@@ -17,6 +17,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<IFileLoggingService, FileLoggingService>();
 
+// Configure Garmin OAuth
+builder.Services.Configure<backend.Models.GarminOAuthConfig>(builder.Configuration.GetSection("GarminOAuth"));
+
+builder.Services.AddHttpClient("GarminOAuth", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+builder.Services.AddScoped<IGarminOAuthService, GarminOAuthService>();
+
 // Add Controllers
 builder.Services.AddControllers();
 
