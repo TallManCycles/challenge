@@ -79,8 +79,10 @@ class AuthService {
         
         // Handle validation errors (400 status with errors object)
         if (response.status === 400 && errorData.errors) {
-          const validationError = new Error('Validation failed')
-          ;(validationError as any).validationErrors = errorData.errors
+          const validationError = new Error('Validation failed') as Error & {
+            validationErrors: Record<string, string[]>
+          }
+          validationError.validationErrors = errorData.errors
           throw validationError
         }
         

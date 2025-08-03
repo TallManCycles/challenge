@@ -338,8 +338,8 @@ const handleSubmit = async () => {
     console.error('Registration failed:', error)
     
     // Handle validation errors from API
-    if (error instanceof Error && (error as any).validationErrors) {
-      const validationErrors = (error as any).validationErrors
+    if (error instanceof Error && 'validationErrors' in error) {
+      const validationErrors = (error as Error & { validationErrors: Record<string, string[]> }).validationErrors
       
       // Map API validation errors to form fields
       if (validationErrors.Username) {
