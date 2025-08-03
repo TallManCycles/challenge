@@ -27,6 +27,13 @@ builder.Services.AddHttpClient("GarminOAuth", client =>
 
 builder.Services.AddScoped<IGarminOAuthService, GarminOAuthService>();
 
+// Add Garmin webhook services
+builder.Services.AddScoped<IGarminWebhookService, GarminWebhookService>();
+builder.Services.AddScoped<IGarminActivityProcessingService, GarminActivityProcessingService>();
+
+// Add background service for retry processing
+builder.Services.AddHostedService<GarminWebhookBackgroundService>();
+
 // Add Controllers
 builder.Services.AddControllers();
 

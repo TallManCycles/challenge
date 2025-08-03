@@ -7,7 +7,8 @@
           <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
           <nav class="flex space-x-6">
             <router-link to="/dashboard" class="text-gray-400 hover:text-gray-300 transition-colors">Challenges</router-link>
-            <a href="#" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</a>
+            <router-link to="/challenges/create" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</router-link>
+            <router-link to="/activities" class="text-gray-400 hover:text-gray-300 transition-colors">My Activities</router-link>
             <router-link to="/settings" class="text-white hover:text-gray-300 transition-colors">Settings</router-link>
           </nav>
         </div>

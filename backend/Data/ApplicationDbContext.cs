@@ -14,6 +14,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<ChallengeParticipant> ChallengeParticipants { get; set; }
     public DbSet<Activity> Activities { get; set; }
     public DbSet<GarminOAuthToken> GarminOAuthTokens { get; set; }
+    public DbSet<GarminActivity> GarminActivities { get; set; }
+    public DbSet<GarminWebhookPayload> GarminWebhookPayloads { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -111,6 +113,44 @@ public class ApplicationDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // GarminActivity entity configuration
+        modelBuilder.Entity<GarminActivity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.SummaryId).IsUnique();
+            entity.HasIndex(e => e.ActivityType);
+            entity.HasIndex(e => e.StartTime);
+            entity.HasIndex(e => e.IsProcessed);
+            entity.HasIndex(e => new { e.UserId, e.ActivityType });
+            
+            entity.Property(e => e.SummaryId).HasMaxLength(255);
+            entity.Property(e => e.ActivityId).HasMaxLength(255);
+            entity.Property(e => e.DeviceName).HasMaxLength(255);
+            entity.Property(e => e.ActivityType)
+                .HasConversion<string>();
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+        
+        // GarminWebhookPayload entity configuration
+        modelBuilder.Entity<GarminWebhookPayload>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.HasIndex(e => e.WebhookType);
+            entity.HasIndex(e => e.IsProcessed);
+            entity.HasIndex(e => e.ReceivedAt);
+            entity.HasIndex(e => e.NextRetryAt);
+            
+            entity.Property(e => e.WebhookType)
+                .HasConversion<string>();
         });
     }
 }
