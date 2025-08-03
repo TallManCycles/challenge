@@ -140,7 +140,7 @@
             </div>
             <p v-if="errors.password" class="mt-1 text-sm text-red-400">{{ errors.password }}</p>
             <div class="mt-2 text-xs text-gray-400">
-              Password must be at least 6 characters long
+              Password must be at least 8 characters with uppercase, lowercase, number, and special character
             </div>
           </div>
 
@@ -288,8 +288,11 @@ const validateForm = (): boolean => {
   if (!form.password) {
     errors.password = 'Password is required'
     isValid = false
-  } else if (form.password.length < 6) {
-    errors.password = 'Password must be at least 6 characters'
+  } else if (form.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters'
+    isValid = false
+  } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test(form.password)) {
+    errors.password = 'Password must contain uppercase, lowercase, number, and special character'
     isValid = false
   }
 
@@ -333,7 +336,30 @@ const handleSubmit = async () => {
 
   } catch (error: unknown) {
     console.error('Registration failed:', error)
-    errorMessage.value = error instanceof Error ? error.message : 'Registration failed. Please try again.'
+    
+    // Handle validation errors from API
+    if (error instanceof Error && (error as any).validationErrors) {
+      const validationErrors = (error as any).validationErrors
+      
+      // Map API validation errors to form fields
+      if (validationErrors.Username) {
+        errors.username = validationErrors.Username[0]
+      }
+      if (validationErrors.Email) {
+        errors.email = validationErrors.Email[0]
+      }
+      if (validationErrors.Password) {
+        errors.password = validationErrors.Password[0]
+      }
+      if (validationErrors.ConfirmPassword) {
+        errors.confirmPassword = validationErrors.ConfirmPassword[0]
+      }
+      
+      // Show general error message
+      errorMessage.value = 'Please fix the validation errors below.'
+    } else {
+      errorMessage.value = error instanceof Error ? error.message : 'Registration failed. Please try again.'
+    }
   } finally {
     isLoading.value = false
   }

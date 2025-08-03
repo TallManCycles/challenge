@@ -75,8 +75,16 @@ class AuthService {
       const response = await fetch(url, config)
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'An error occurred' }))
-        throw new Error(error.message || `HTTP error! status: ${response.status}`)
+        const errorData = await response.json().catch(() => ({ message: 'An error occurred' }))
+        
+        // Handle validation errors (400 status with errors object)
+        if (response.status === 400 && errorData.errors) {
+          const validationError = new Error('Validation failed')
+          ;(validationError as any).validationErrors = errorData.errors
+          throw validationError
+        }
+        
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
       }
 
       return await response.json()
