@@ -3,20 +3,81 @@
     <!-- Header -->
     <header class="border-b border-gray-800 px-6 py-4">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div class="flex items-center space-x-8">
+        <div class="flex items-center">
           <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
-          <nav class="flex space-x-6">
+          
+          <!-- Desktop Navigation -->
+          <nav class="hidden md:flex space-x-6 ml-8">
             <router-link to="/dashboard" class="text-gray-400 hover:text-gray-300 transition-colors">Challenges</router-link>
-            <a href="#" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</a>
+            <router-link to="/challenges/create" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</router-link>
+            <router-link to="/activities" class="text-gray-400 hover:text-gray-300 transition-colors">My Activities</router-link>
             <router-link to="/settings" class="text-white hover:text-gray-300 transition-colors">Settings</router-link>
           </nav>
         </div>
-        <button 
-          @click="logout" 
-          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
-        >
-          Logout
-        </button>
+
+        <div class="flex items-center space-x-4">
+          <!-- Desktop Logout Button -->
+          <button 
+            @click="logout" 
+            class="hidden md:block bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            Logout
+          </button>
+
+          <!-- Mobile Menu Button -->
+          <button
+            @click="toggleMobileMenu"
+            class="md:hidden text-gray-400 hover:text-white transition-colors p-2"
+            aria-label="Toggle mobile menu"
+          >
+            <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+            <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-800 mt-4 pt-4">
+        <nav class="flex flex-col space-y-3">
+          <router-link 
+            to="/dashboard" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Challenges
+          </router-link>
+          <router-link 
+            to="/challenges/create" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Create Challenge
+          </router-link>
+          <router-link 
+            to="/activities" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            My Activities
+          </router-link>
+          <router-link 
+            to="/settings" 
+            @click="closeMobileMenu"
+            class="text-white hover:text-gray-300 transition-colors py-2"
+          >
+            Settings
+          </router-link>
+          <button
+            @click="logout"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm text-left mt-4"
+          >
+            Logout
+          </button>
+        </nav>
       </div>
     </header>
 
@@ -154,11 +215,27 @@
               <button
                 type="button"
                 @click="handleIntegrationClick('Garmin Connect')"
-                class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-medium transition-colors mb-2"
+                :disabled="isConnectingGarmin"
+                :class="[
+                  'w-full py-2 px-4 rounded-lg font-medium transition-colors mb-2',
+                  garminStatus.isConnected 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-red-600 hover:bg-red-700 text-white',
+                  isConnectingGarmin && 'opacity-50 cursor-not-allowed'
+                ]"
               >
-                Connect
+                <svg v-if="isConnectingGarmin" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ isConnectingGarmin ? 'Processing...' : (garminStatus.isConnected ? 'Disconnect' : 'Connect') }}
               </button>
-              <p class="text-xs text-gray-400">Not Connected</p>
+              <p class="text-xs text-gray-400">
+                {{ garminStatus.isConnected ? 'Connected' : 'Not Connected' }}
+                <span v-if="garminStatus.isConnected && garminStatus.connectedAt" class="block">
+                  {{ new Date(garminStatus.connectedAt).toLocaleDateString() }}
+                </span>
+              </p>
             </div>
 
             <!-- Strava -->
@@ -262,6 +339,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { authService } from '../services/auth'
+import { garminService, type GarminOAuthStatus } from '../services/garmin'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -282,6 +360,11 @@ const isSubmitting = ref(false)
 const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error' | 'info'>('info')
+const mobileMenuOpen = ref(false)
+
+// Garmin integration state
+const garminStatus = ref<GarminOAuthStatus>({ isConnected: false })
+const isConnectingGarmin = ref(false)
 
 // Load current user data
 onMounted(async () => {
@@ -292,11 +375,49 @@ onMounted(async () => {
   } catch {
     showToastMessage('Failed to load user data', 'error')
   }
+
+  // Load Garmin connection status
+  await loadGarminStatus()
+
+  // Check for OAuth callback parameters
+  checkOAuthCallback()
 })
+
+const loadGarminStatus = async () => {
+  try {
+    garminStatus.value = await garminService.getOAuthStatus()
+  } catch {
+    console.warn('Failed to load Garmin status')
+  }
+}
+
+const checkOAuthCallback = () => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const garminResult = urlParams.get('garmin')
+  
+  if (garminResult === 'success') {
+    showToastMessage('Garmin Connect connected successfully!', 'success')
+    loadGarminStatus() // Refresh status
+    // Clean up URL
+    window.history.replaceState({}, document.title, '/settings')
+  } else if (garminResult === 'error') {
+    showToastMessage('Failed to connect to Garmin Connect. Please try again.', 'error')
+    // Clean up URL
+    window.history.replaceState({}, document.title, '/settings')
+  }
+}
 
 const logout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
 }
 
 const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -313,8 +434,42 @@ const hideToast = () => {
   showToast.value = false
 }
 
-const handleIntegrationClick = (service: string) => {
-  showToastMessage(`${service} integration is not implemented yet`, 'info')
+const handleIntegrationClick = async (service: string) => {
+  if (service === 'Garmin Connect') {
+    await handleGarminIntegration()
+  } else {
+    showToastMessage(`${service} integration is not implemented yet`, 'info')
+  }
+}
+
+const handleGarminIntegration = async () => {
+  if (garminStatus.value.isConnected) {
+    // Disconnect Garmin
+    try {
+      isConnectingGarmin.value = true
+      await garminService.disconnectGarmin()
+      garminStatus.value = { isConnected: false }
+      showToastMessage('Garmin Connect disconnected successfully', 'success')
+    } catch (error) {
+      console.error('Failed to disconnect Garmin:', error)
+      showToastMessage('Failed to disconnect Garmin Connect', 'error')
+    } finally {
+      isConnectingGarmin.value = false
+    }
+  } else {
+    // Connect to Garmin
+    try {
+      isConnectingGarmin.value = true
+      showToastMessage('Redirecting to Garmin Connect...', 'info')
+      
+      const oauthData = await garminService.initiateOAuth()
+      garminService.redirectToGarmin(oauthData.url)
+    } catch (error) {
+      console.error('Failed to initiate Garmin OAuth:', error)
+      showToastMessage('Failed to connect to Garmin Connect', 'error')
+      isConnectingGarmin.value = false
+    }
+  }
 }
 
 const cancelChanges = async () => {

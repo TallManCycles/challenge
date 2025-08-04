@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using backend.Data;
@@ -11,9 +12,11 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250803184234_AddGarminOAuthTokensFixed")]
+    partial class AddGarminOAuthTokensFixed
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -149,95 +152,6 @@ namespace backend.Migrations
                     b.ToTable("ChallengeParticipants");
                 });
 
-            modelBuilder.Entity("backend.Models.GarminActivity", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ActiveKilocalories")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ActivityId")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<string>("ActivityType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("DeviceName")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<double?>("DistanceInMeters")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("DurationInSeconds")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsManual")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsProcessed")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsWebUpload")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("ProcessingError")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("ReceivedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("ResponseData")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("StartTime")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<int>("StartTimeOffsetInSeconds")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SummaryId")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
-
-                    b.Property<double?>("TotalElevationGainInMeters")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("TotalElevationLossInMeters")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActivityType");
-
-                    b.HasIndex("IsProcessed");
-
-                    b.HasIndex("StartTime");
-
-                    b.HasIndex("SummaryId")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "ActivityType");
-
-                    b.ToTable("GarminActivities");
-                });
-
             modelBuilder.Entity("backend.Models.GarminOAuthToken", b =>
                 {
                     b.Property<int>("Id")
@@ -297,53 +211,6 @@ namespace backend.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("GarminOAuthTokens");
-                });
-
-            modelBuilder.Entity("backend.Models.GarminWebhookPayload", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsProcessed")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("NextRetryAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<DateTime?>("ProcessedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<string>("ProcessingError")
-                        .HasColumnType("text");
-
-                    b.Property<string>("RawPayload")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("ReceivedAt")
-                        .HasColumnType("timestamp without time zone");
-
-                    b.Property<int?>("RetryCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("WebhookType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("IsProcessed");
-
-                    b.HasIndex("NextRetryAt");
-
-                    b.HasIndex("ReceivedAt");
-
-                    b.HasIndex("WebhookType");
-
-                    b.ToTable("GarminWebhookPayloads");
                 });
 
             modelBuilder.Entity("backend.Models.User", b =>
@@ -449,17 +316,6 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Challenge");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("backend.Models.GarminActivity", b =>
-                {
-                    b.HasOne("backend.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("User");
                 });

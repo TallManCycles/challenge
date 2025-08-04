@@ -1,26 +1,85 @@
 <template>
   <div class="min-h-screen bg-gray-900 text-white">
     <!-- Header -->
-    <div class="flex items-center justify-between p-6 border-b border-gray-700">
-      <div class="flex items-center">
-        <div class="flex items-center space-x-2">
-          <div class="text-blue-500">
-            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <header class="border-b border-gray-800 px-6 py-4">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center">
+          <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
+          
+          <!-- Desktop Navigation -->
+          <nav class="hidden md:flex space-x-6 ml-8">
+            <router-link to="/dashboard" class="text-gray-400 hover:text-gray-300 transition-colors">Challenges</router-link>
+            <router-link to="/challenges/create" class="text-white hover:text-gray-300 transition-colors">Create Challenge</router-link>
+            <router-link to="/activities" class="text-gray-400 hover:text-gray-300 transition-colors">My Activities</router-link>
+            <router-link to="/settings" class="text-gray-400 hover:text-gray-300 transition-colors">Settings</router-link>
+          </nav>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <!-- Desktop Logout Button -->
+          <button
+            @click="logout"
+            class="hidden md:block bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            Logout
+          </button>
+
+          <!-- Mobile Menu Button -->
+          <button
+            @click="toggleMobileMenu"
+            class="md:hidden text-gray-400 hover:text-white transition-colors p-2"
+            aria-label="Toggle mobile menu"
+          >
+            <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
             </svg>
-          </div>
-          <span class="text-xl font-semibold">Challenges</span>
+            <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
       </div>
-      <div class="flex items-center space-x-4">
-        <button class="text-gray-400 hover:text-white">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5h5m-5-5V7a3 3 0 00-3-3H7a3 3 0 00-3 3v10a3 3 0 003 3h5" />
-          </svg>
-        </button>
-        <div class="w-8 h-8 bg-gray-600 rounded-full"></div>
+
+      <!-- Mobile Menu -->
+      <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-800 mt-4 pt-4">
+        <nav class="flex flex-col space-y-3">
+          <router-link 
+            to="/dashboard" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Challenges
+          </router-link>
+          <router-link 
+            to="/challenges/create" 
+            @click="closeMobileMenu"
+            class="text-white hover:text-gray-300 transition-colors py-2"
+          >
+            Create Challenge
+          </router-link>
+          <router-link 
+            to="/activities" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            My Activities
+          </router-link>
+          <router-link 
+            to="/settings" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Settings
+          </router-link>
+          <button
+            @click="logout"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm text-left mt-4"
+          >
+            Logout
+          </button>
+        </nav>
       </div>
-    </div>
+    </header>
 
     <!-- Main Content -->
     <div class="max-w-2xl mx-auto p-6">
@@ -191,6 +250,8 @@ import { ChallengeType } from '../types/challenge'
 
 const router = useRouter()
 
+const mobileMenuOpen = ref(false)
+
 const form = reactive({
   title: '',
   description: '',
@@ -213,6 +274,19 @@ const isSubmitting = ref(false)
 
 const goBack = () => {
   router.push('/dashboard')
+}
+
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+}
+
+const logout = () => {
+  // Add logout functionality here if needed
+  router.push('/login')
 }
 
 const validateForm = (): boolean => {

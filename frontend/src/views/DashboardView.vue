@@ -3,20 +3,81 @@
     <!-- Header -->
     <header class="border-b border-gray-800 px-6 py-4">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div class="flex items-center space-x-8">
+        <div class="flex items-center">
           <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
-          <nav class="flex space-x-6">
+          
+          <!-- Desktop Navigation -->
+          <nav class="hidden md:flex space-x-6 ml-8">
             <router-link to="/dashboard" class="text-white hover:text-gray-300 transition-colors">Challenges</router-link>
             <router-link to="/challenges/create" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</router-link>
+            <router-link to="/activities" class="text-gray-400 hover:text-gray-300 transition-colors">My Activities</router-link>
             <router-link to="/settings" class="text-gray-400 hover:text-gray-300 transition-colors">Settings</router-link>
           </nav>
         </div>
-        <button 
-          @click="logout" 
-          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
-        >
-          Logout
-        </button>
+
+        <div class="flex items-center space-x-4">
+          <!-- Desktop Logout Button -->
+          <button 
+            @click="logout" 
+            class="hidden md:block bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            Logout
+          </button>
+
+          <!-- Mobile Menu Button -->
+          <button
+            @click="toggleMobileMenu"
+            class="md:hidden text-gray-400 hover:text-white transition-colors p-2"
+            aria-label="Toggle mobile menu"
+          >
+            <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+            <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-800 mt-4 pt-4">
+        <nav class="flex flex-col space-y-3">
+          <router-link 
+            to="/dashboard" 
+            @click="closeMobileMenu"
+            class="text-white hover:text-gray-300 transition-colors py-2"
+          >
+            Challenges
+          </router-link>
+          <router-link 
+            to="/challenges/create" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Create Challenge
+          </router-link>
+          <router-link 
+            to="/activities" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            My Activities
+          </router-link>
+          <router-link 
+            to="/settings" 
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Settings
+          </router-link>
+          <button
+            @click="logout"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm text-left mt-4"
+          >
+            Logout
+          </button>
+        </nav>
       </div>
     </header>
 
@@ -234,10 +295,19 @@ const authStore = useAuthStore()
 
 const loading = ref(true)
 const allChallenges = ref<Challenge[]>([])
+const mobileMenuOpen = ref(false)
 
 const logout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
 }
 
 // Computed properties for filtering challenges
