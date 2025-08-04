@@ -28,8 +28,6 @@ services:
     container_name: ${BACKEND_CONTAINER_NAME:-garmin-challenge-backend}
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      # --- FIX: The Port is now hardcoded to 5432 for internal container communication. ---
-      # --- CHANGE: Enforced all required connection string variables. ---
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB:-garmin_challenge};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD}
       - Auth__JwtKey=${JWT_KEY}
       - Auth__Salt=${AUTH_SALT}
@@ -37,6 +35,10 @@ services:
       - Frontend__AllowedOrigins__1=${FRONTEND_ORIGIN_1} # Optional
       - Logging__LogLevel__Default=Warning
       - Logging__LogLevel__Microsoft_AspNetCore=Warning
+      - GarminOAuth__ConsumerKey="${GARMINOAUTH_CONSUMER_KEY}"
+      - GarminOAuth__ConsumerSecret="${GARMINOAUTH_CONSUMER_SECRET}"
+      - GarminOAuth__CallbackUrl="${GARMINOAUTH_CALLBACK_URL}"
+      - GarminOAuth__RedirectUrl="${GARMINOAUTH_REDIRECT_URL}"
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
