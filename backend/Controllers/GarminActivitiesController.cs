@@ -49,8 +49,8 @@ public class GarminActivitiesController : ControllerBase
                     a.Id,
                     a.SummaryId,
                     a.ActivityId,
-                    a.ActivityType,
-                    a.StartTime,
+                    ActivityType = a.ActivityType.ToString(),
+                    StartTime = DateTime.SpecifyKind(a.StartTime, DateTimeKind.Utc),
                     a.DurationInSeconds,
                     a.DistanceInMeters,
                     a.TotalElevationGainInMeters,
@@ -59,7 +59,7 @@ public class GarminActivitiesController : ControllerBase
                     a.DeviceName,
                     a.IsManual,
                     a.IsWebUpload,
-                    a.ReceivedAt
+                    ReceivedAt = DateTime.SpecifyKind(a.ReceivedAt, DateTimeKind.Utc)
                 }),
                 hasMore,
                 page,
@@ -98,8 +98,8 @@ public class GarminActivitiesController : ControllerBase
                     a.Id,
                     a.SummaryId,
                     a.ActivityId,
-                    a.ActivityType,
-                    a.StartTime,
+                    ActivityType = a.ActivityType.ToString(),
+                    StartTime = DateTime.SpecifyKind(a.StartTime, DateTimeKind.Utc),
                     a.DurationInSeconds,
                     a.DistanceInMeters,
                     a.TotalElevationGainInMeters,
@@ -144,8 +144,8 @@ public class GarminActivitiesController : ControllerBase
                 activity.Id,
                 activity.SummaryId,
                 activity.ActivityId,
-                activity.ActivityType,
-                activity.StartTime,
+                ActivityType = activity.ActivityType.ToString(),
+                StartTime = DateTime.SpecifyKind(activity.StartTime, DateTimeKind.Utc),
                 activity.StartTimeOffsetInSeconds,
                 activity.DurationInSeconds,
                 activity.DistanceInMeters,
@@ -155,8 +155,8 @@ public class GarminActivitiesController : ControllerBase
                 activity.DeviceName,
                 activity.IsManual,
                 activity.IsWebUpload,
-                activity.ReceivedAt,
-                activity.ProcessedAt,
+                ReceivedAt = DateTime.SpecifyKind(activity.ReceivedAt, DateTimeKind.Utc),
+                ProcessedAt = activity.ProcessedAt.HasValue ? DateTime.SpecifyKind(activity.ProcessedAt.Value, DateTimeKind.Utc) : (DateTime?)null,
                 activity.IsProcessed
             });
         }

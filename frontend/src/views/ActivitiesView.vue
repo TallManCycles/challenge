@@ -3,21 +3,81 @@
     <!-- Header -->
     <header class="border-b border-gray-800 px-6 py-4">
       <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div class="flex items-center space-x-8">
+        <div class="flex items-center">
           <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
-          <nav class="flex space-x-6">
+
+          <!-- Desktop Navigation -->
+          <nav class="hidden md:flex space-x-6 ml-8">
             <router-link to="/dashboard" class="text-gray-400 hover:text-gray-300 transition-colors">Challenges</router-link>
-            <a href="#" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</a>
+            <router-link to="/challenges/create" class="text-gray-400 hover:text-gray-300 transition-colors">Create Challenge</router-link>
             <router-link to="/activities" class="text-white hover:text-gray-300 transition-colors">My Activities</router-link>
             <router-link to="/settings" class="text-gray-400 hover:text-gray-300 transition-colors">Settings</router-link>
           </nav>
         </div>
-        <button
-          @click="logout"
-          class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
-        >
-          Logout
-        </button>
+
+        <div class="flex items-center space-x-4">
+          <!-- Desktop Logout Button -->
+          <button
+            @click="logout"
+            class="hidden md:block bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+          >
+            Logout
+          </button>
+
+          <!-- Mobile Menu Button -->
+          <button
+            @click="toggleMobileMenu"
+            class="md:hidden text-gray-400 hover:text-white transition-colors p-2"
+            aria-label="Toggle mobile menu"
+          >
+            <svg v-if="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+            <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Menu -->
+      <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-800 mt-4 pt-4">
+        <nav class="flex flex-col space-y-3">
+          <router-link
+            to="/dashboard"
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Challenges
+          </router-link>
+          <router-link
+            to="/challenges/create"
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Create Challenge
+          </router-link>
+          <router-link
+            to="/activities"
+            @click="closeMobileMenu"
+            class="text-white hover:text-gray-300 transition-colors py-2"
+          >
+            My Activities
+          </router-link>
+          <router-link
+            to="/settings"
+            @click="closeMobileMenu"
+            class="text-gray-400 hover:text-gray-300 transition-colors py-2"
+          >
+            Settings
+          </router-link>
+          <button
+            @click="logout"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm text-left mt-4"
+          >
+            Logout
+          </button>
+        </nav>
       </div>
     </header>
 
@@ -125,35 +185,39 @@
 
                 <div>
                   <h3 class="text-lg font-semibold text-white">{{ formatActivityType(activity.activityType) }}</h3>
-                  <p class="text-sm text-gray-400">{{ formatDate(activity.startTime) }}</p>
+                  <p class="text-sm text-gray-400">{{ formatDate(activity.startTime, true) }}</p>
                 </div>
               </div>
 
               <!-- Activity Stats -->
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div v-if="activity.distanceInMeters" class="text-center">
                   <div class="text-2xl font-bold text-white">{{ formatDistance(activity.distanceInMeters) }}</div>
                   <div class="text-xs text-gray-400 uppercase tracking-wide">Distance</div>
-                </div>
-
-                <div class="text-center">
-                  <div class="text-2xl font-bold text-white">{{ formatDuration(activity.durationInSeconds) }}</div>
-                  <div class="text-xs text-gray-400 uppercase tracking-wide">Duration</div>
                 </div>
 
                 <div v-if="activity.totalElevationGainInMeters" class="text-center">
                   <div class="text-2xl font-bold text-white">{{ Math.round(activity.totalElevationGainInMeters) }}m</div>
                   <div class="text-xs text-gray-400 uppercase tracking-wide">Elevation</div>
                 </div>
-
-                <div v-if="activity.activeKilocalories" class="text-center">
-                  <div class="text-2xl font-bold text-white">{{ activity.activeKilocalories }}</div>
-                  <div class="text-xs text-gray-400 uppercase tracking-wide">Calories</div>
-                </div>
               </div>
 
               <!-- Activity Meta Info -->
               <div class="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+                <span class="flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6l5.25 3.15-.75 1.23L11 13V7z"/>
+                  </svg>
+                  {{ formatDuration(activity.durationInSeconds) }}
+                </span>
+
+                <span v-if="activity.activeKilocalories" class="flex items-center">
+                  <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M13.5.67s.74 2.65.74 4.8c0 2.06-1.35 3.73-3.41 3.73-2.07 0-3.63-1.67-3.63-3.73l.03-.36C5.21 7.51 4 10.62 4 14c0 4.42 3.58 8 8 8s8-3.58 8-8C20 8.61 17.41 3.8 13.5.67zM11.71 19c-1.78 0-3.22-1.4-3.22-3.14 0-1.62 1.05-2.76 2.81-3.12 1.77-.36 3.6-1.21 4.62-2.58.39 1.29.28 2.82-.2 4.25-.72 2.07-2.11 4.59-4.01 4.59z"/>
+                  </svg>
+                  {{ activity.activeKilocalories }} cal
+                </span>
+
                 <span v-if="activity.deviceName" class="flex items-center">
                   <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H7V4h10v16z"/>
@@ -250,6 +314,7 @@ const currentPage = ref(1)
 const selectedFilter = ref('all')
 const dateFrom = ref('')
 const dateTo = ref('')
+const mobileMenuOpen = ref(false)
 
 const API_BASE_URL = import.meta.env.VITE_APP_API_ENDPOINT || 'http://localhost:5000'
 
@@ -273,7 +338,7 @@ const loadActivities = async (reset = true) => {
     }
 
     let endpoint = ''
-    let params: any = {
+    const params: Record<string, string | number> = {
       page: currentPage.value,
       pageSize: 20
     }
@@ -340,6 +405,14 @@ const logout = () => {
   router.push('/login')
 }
 
+const toggleMobileMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+
+const closeMobileMenu = () => {
+  mobileMenuOpen.value = false
+}
+
 const isCyclingActivity = (activityType: string) => {
   const cyclingTypes = [
     'CYCLING', 'BMX', 'CYCLOCROSS', 'DOWNHILL_BIKING',
@@ -369,9 +442,10 @@ const formatDate = (dateString: string, includeTime = false) => {
   if (includeTime) {
     options.hour = '2-digit'
     options.minute = '2-digit'
+    return date.toLocaleString('en-AU', options)
   }
 
-  return date.toLocaleDateString('en-US', options)
+  return date.toLocaleDateString('en-AU', options)
 }
 
 const formatDistance = (meters: number) => {

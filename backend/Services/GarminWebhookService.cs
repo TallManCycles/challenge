@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using backend.Data;
@@ -14,20 +15,17 @@ public interface IGarminWebhookService
 
 public class GarminWebhookService : IGarminWebhookService
 {
-    private readonly ApplicationDbContext _context;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<GarminWebhookService> _logger;
     private readonly IGarminActivityProcessingService _activityProcessingService;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public GarminWebhookService(
-        ApplicationDbContext context,
         IHttpClientFactory httpClientFactory,
         ILogger<GarminWebhookService> logger,
         IGarminActivityProcessingService activityProcessingService,
         IServiceScopeFactory scopeFactory)
     {
-        _context = context;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _activityProcessingService = activityProcessingService;
@@ -38,6 +36,9 @@ public class GarminWebhookService : IGarminWebhookService
     {
         try
         {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            
             // Store raw payload first
             var webhookPayload = new GarminWebhookPayload
             {
@@ -46,11 +47,11 @@ public class GarminWebhookService : IGarminWebhookService
                 ReceivedAt = DateTime.UtcNow
             };
 
-            _context.GarminWebhookPayloads.Add(webhookPayload);
-            await _context.SaveChangesAsync();
+            context.GarminWebhookPayloads.Add(webhookPayload);
+            await context.SaveChangesAsync();
 
             // Process ping notification to fetch actual data
-            await ProcessPingPayloadAsync(payload, webhookPayload.Id);
+            await ProcessPingPayloadAsync(payload, webhookPayload.Id, scope.ServiceProvider);
 
             return true;
         }
@@ -65,6 +66,9 @@ public class GarminWebhookService : IGarminWebhookService
     {
         try
         {
+            using var scope = _scopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            
             // Store raw payload first
             var webhookPayload = new GarminWebhookPayload
             {
@@ -73,11 +77,11 @@ public class GarminWebhookService : IGarminWebhookService
                 ReceivedAt = DateTime.UtcNow
             };
 
-            _context.GarminWebhookPayloads.Add(webhookPayload);
-            await _context.SaveChangesAsync();
+            context.GarminWebhookPayloads.Add(webhookPayload);
+            await context.SaveChangesAsync();
 
             // Process push notification directly (data is in payload)
-            await ProcessPushPayloadAsync(payload, webhookPayload.Id);
+            await ProcessPushPayloadAsync(payload, webhookPayload.Id, scope.ServiceProvider);
 
             return true;
         }
@@ -88,7 +92,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
     }
 
-    private async Task ProcessPingPayloadAsync(string payload, int payloadId)
+    private async Task ProcessPingPayloadAsync(string payload, int payloadId, IServiceProvider serviceProvider)
     {
         using var jsonDoc = JsonDocument.Parse(payload);
         var root = jsonDoc.RootElement;
@@ -102,14 +106,14 @@ public class GarminWebhookService : IGarminWebhookService
                     if (activity.TryGetProperty("callbackURL", out var callbackUrlElement))
                     {
                         string callbackUrl = callbackUrlElement.GetString() ?? "";
-                        await FetchAndProcessActivityDataAsync(callbackUrl, payloadId);
+                        await FetchAndProcessActivityDataAsync(callbackUrl, payloadId, serviceProvider);
                     }
                 }
             }
         }
     }
 
-    private async Task FetchAndProcessActivityDataAsync(string callbackUrl, int payloadId)
+    private async Task FetchAndProcessActivityDataAsync(string callbackUrl, int payloadId, IServiceProvider serviceProvider)
     {
         try
         {
@@ -119,7 +123,7 @@ public class GarminWebhookService : IGarminWebhookService
             if (response.IsSuccessStatusCode)
             {
                 string activityData = await response.Content.ReadAsStringAsync();
-                await ProcessActivityDataAsync(activityData, payloadId);
+                await ProcessActivityDataAsync(activityData, payloadId, serviceProvider);
             }
             else
             {
@@ -133,13 +137,15 @@ public class GarminWebhookService : IGarminWebhookService
         }
     }
 
-    private async Task ProcessPushPayloadAsync(string payload, int payloadId)
+    private async Task ProcessPushPayloadAsync(string payload, int payloadId, IServiceProvider serviceProvider)
     {
-        await ProcessActivityDataAsync(payload, payloadId);
+        await ProcessActivityDataAsync(payload, payloadId, serviceProvider);
     }
 
-    private async Task ProcessActivityDataAsync(string activityData, int payloadId)
+    private async Task ProcessActivityDataAsync(string activityData, int payloadId, IServiceProvider serviceProvider)
     {
+        var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+        
         try
         {
             using var jsonDoc = JsonDocument.Parse(activityData);
@@ -149,17 +155,17 @@ public class GarminWebhookService : IGarminWebhookService
             {
                 foreach (var activityElement in activitiesElement.EnumerateArray())
                 {
-                    await ProcessSingleActivityAsync(activityElement, payloadId);
+                    await ProcessSingleActivityAsync(activityElement, payloadId, serviceProvider);
                 }
             }
             
             // Mark payload as processed
-            var webhookPayload = await _context.GarminWebhookPayloads.FindAsync(payloadId);
+            var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
             if (webhookPayload != null)
             {
                 webhookPayload.IsProcessed = true;
                 webhookPayload.ProcessedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
         }
         catch (Exception ex)
@@ -167,25 +173,27 @@ public class GarminWebhookService : IGarminWebhookService
             _logger.LogError(ex, "Error processing activity data for payload {PayloadId}", payloadId);
             
             // Mark payload as failed
-            var webhookPayload = await _context.GarminWebhookPayloads.FindAsync(payloadId);
+            var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
             if (webhookPayload != null)
             {
                 webhookPayload.ProcessingError = ex.Message;
                 webhookPayload.RetryCount = (webhookPayload.RetryCount ?? 0) + 1;
                 webhookPayload.NextRetryAt = DateTime.UtcNow.AddMinutes(Math.Pow(2, webhookPayload.RetryCount.Value));
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
         }
     }
 
-    private async Task ProcessSingleActivityAsync(JsonElement activityElement, int payloadId)
+    private async Task ProcessSingleActivityAsync(JsonElement activityElement, int payloadId, IServiceProvider serviceProvider)
     {
+        var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+        
         try
         {
             string summaryId = activityElement.GetProperty("summaryId").GetString() ?? "";
             
             // Check for duplicate
-            bool exists = await _context.GarminActivities
+            bool exists = await context.GarminActivities
                 .AnyAsync(a => a.SummaryId == summaryId);
             
             if (exists)
@@ -195,7 +203,7 @@ public class GarminWebhookService : IGarminWebhookService
             }
 
             // Extract user ID from various possible locations
-             int userId = ExtractUserId(activityElement);
+             int userId = await ExtractUserIdAsync(activityElement, serviceProvider);
             if (userId == 0)
             {
                 _logger.LogWarning("Could not extract userId from activity {SummaryId}", summaryId);
@@ -205,8 +213,8 @@ public class GarminWebhookService : IGarminWebhookService
             // Parse activity data
             var activity = ParseActivity(activityElement, userId);
             
-            _context.GarminActivities.Add(activity);
-            await _context.SaveChangesAsync();
+            context.GarminActivities.Add(activity);
+            await context.SaveChangesAsync();
 
             // Process for challenges asynchronously
             //_ = Task.Run(async () => await _activityProcessingService.ProcessActivityForChallengesAsync(activity.Id));
@@ -238,35 +246,45 @@ public class GarminWebhookService : IGarminWebhookService
         }
     }
 
-    private int ExtractUserId(JsonElement activityElement)
+    private async Task<int> ExtractUserIdAsync(JsonElement activityElement, IServiceProvider serviceProvider)
     {
         // Try userAccessToken first (from push notifications) - this would need to be mapped to actual user ID
         if (activityElement.TryGetProperty("userAccessToken", out var uatElement))
         {
             string userAccessToken = uatElement.GetString() ?? "";
-            // TODO: Map userAccessToken to actual UserId from GarminOAuthTokens table
-            return GetUserIdFromAccessToken(userAccessToken);
+            return await GetUserIdFromAccessTokenAsync(userAccessToken, serviceProvider);
         }
         
-        // Try userId (from ping notifications)
+        // Try userId (from activity details) - this is a Garmin UUID string
         if (activityElement.TryGetProperty("userId", out var userIdElement))
         {
-            if (int.TryParse(userIdElement.GetString(), out int userId))
-            {
-                return userId;
-            }
+            string garminUserId = userIdElement.GetString() ?? "";
+            return await GetUserIdFromGarminUserIdAsync(garminUserId, serviceProvider);
         }
         
         return 0;
     }
 
-    private int GetUserIdFromAccessToken(string accessToken)
+    private async Task<int> GetUserIdFromAccessTokenAsync(string accessToken, IServiceProvider serviceProvider)
     {
+        var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+        
         // Look up user by access token in GarminOAuthTokens table
-        var token = _context.GarminOAuthTokens
-            .FirstOrDefault(t => t.AccessToken == accessToken && t.IsAuthorized);
+        var token = await context.GarminOAuthTokens
+            .FirstOrDefaultAsync(t => t.AccessToken == accessToken && t.IsAuthorized);
         
         return token?.UserId ?? 0;
+    }
+
+    private async Task<int> GetUserIdFromGarminUserIdAsync(string garminUserId, IServiceProvider serviceProvider)
+    {
+        var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        // Look up user by Garmin User ID in Users table
+        var user = await context.Users
+            .FirstOrDefaultAsync(u => u.GarminUserId == garminUserId);
+        
+        return user?.Id ?? 0;
     }
 
     private GarminActivity ParseActivity(JsonElement activityElement, int userId)
@@ -278,52 +296,103 @@ public class GarminWebhookService : IGarminWebhookService
             ResponseData = activityElement.GetRawText()
         };
 
-        // Parse optional fields
+        // Parse activityId from root level
         if (activityElement.TryGetProperty("activityId", out var activityIdElement))
-            activity.ActivityId = activityIdElement.GetInt32().ToString();
+            activity.ActivityId = activityIdElement.GetDecimal().ToString(CultureInfo.CurrentCulture);
 
-        if (activityElement.TryGetProperty("activityType", out var activityTypeElement))
+        // Most fields are in the summary object
+        if (activityElement.TryGetProperty("summary", out var summaryElement))
         {
-            string activityTypeStr = activityTypeElement.GetString() ?? "";
-            if (Enum.TryParse<GarminActivityType>(activityTypeStr, out var activityType))
+            if (summaryElement.TryGetProperty("activityType", out var activityTypeElement))
             {
-                activity.ActivityType = activityType;
+                string activityTypeStr = activityTypeElement.GetString() ?? "";
+                if (Enum.TryParse<GarminActivityType>(activityTypeStr, out var activityType))
+                {
+                    activity.ActivityType = activityType;
+                }
+            }
+
+            if (summaryElement.TryGetProperty("startTimeInSeconds", out var startTimeElement))
+            {
+                activity.StartTime = DateTimeOffset.FromUnixTimeSeconds(startTimeElement.GetInt64()).DateTime;
+            }
+
+            if (summaryElement.TryGetProperty("startTimeOffsetInSeconds", out var offsetElement))
+                activity.StartTimeOffsetInSeconds = offsetElement.GetInt32();
+
+            if (summaryElement.TryGetProperty("durationInSeconds", out var durationElement))
+                activity.DurationInSeconds = durationElement.GetInt32();
+
+            if (summaryElement.TryGetProperty("deviceName", out var deviceElement))
+                activity.DeviceName = deviceElement.GetString();
+
+            if (summaryElement.TryGetProperty("manual", out var manualElement))
+                activity.IsManual = manualElement.GetBoolean();
+
+            if (summaryElement.TryGetProperty("isWebUpload", out var webUploadElement))
+                activity.IsWebUpload = webUploadElement.GetBoolean();
+        }
+
+        // Process samples array for distance and elevation data
+        if (activityElement.TryGetProperty("samples", out var samplesElement) && samplesElement.ValueKind == JsonValueKind.Array)
+        {
+            ProcessSamples(samplesElement, activity);
+        }
+
+        return activity;
+    }
+
+    private void ProcessSamples(JsonElement samplesElement, GarminActivity activity)
+    {
+        double maxDistance = 0;
+        double minElevation = double.MaxValue;
+        double maxElevation = double.MinValue;
+        double totalElevationGain = 0;
+        double totalElevationLoss = 0;
+        double? previousElevation = null;
+
+        foreach (var sample in samplesElement.EnumerateArray())
+        {
+            // Get maximum total distance (cumulative distance)
+            if (sample.TryGetProperty("totalDistanceInMeters", out var distanceElement))
+            {
+                double distance = distanceElement.GetDouble();
+                if (distance > maxDistance)
+                {
+                    maxDistance = distance;
+                }
+            }
+
+            // Process elevation for gain/loss calculations
+            if (sample.TryGetProperty("elevationInMeters", out var elevationElement))
+            {
+                double elevation = elevationElement.GetDouble();
+                
+                // Track min/max elevation
+                if (elevation < minElevation) minElevation = elevation;
+                if (elevation > maxElevation) maxElevation = elevation;
+
+                // Calculate elevation gain/loss
+                if (previousElevation.HasValue)
+                {
+                    double elevationChange = elevation - previousElevation.Value;
+                    if (elevationChange > 0)
+                    {
+                        totalElevationGain += elevationChange;
+                    }
+                    else if (elevationChange < 0)
+                    {
+                        totalElevationLoss += Math.Abs(elevationChange);
+                    }
+                }
+                previousElevation = elevation;
             }
         }
 
-        if (activityElement.TryGetProperty("startTimeInSeconds", out var startTimeElement))
-        {
-            activity.StartTime = DateTimeOffset.FromUnixTimeSeconds(startTimeElement.GetInt64()).DateTime;
-        }
-
-        if (activityElement.TryGetProperty("startTimeOffsetInSeconds", out var offsetElement))
-            activity.StartTimeOffsetInSeconds = offsetElement.GetInt32();
-
-        if (activityElement.TryGetProperty("durationInSeconds", out var durationElement))
-            activity.DurationInSeconds = durationElement.GetInt32();
-
-        if (activityElement.TryGetProperty("distanceInMeters", out var distanceElement))
-            activity.DistanceInMeters = distanceElement.GetDouble();
-
-        if (activityElement.TryGetProperty("totalElevationGainInMeters", out var elevGainElement))
-            activity.TotalElevationGainInMeters = elevGainElement.GetDouble();
-
-        if (activityElement.TryGetProperty("totalElevationLossInMeters", out var elevLossElement))
-            activity.TotalElevationLossInMeters = elevLossElement.GetDouble();
-
-        if (activityElement.TryGetProperty("activeKilocalories", out var caloriesElement))
-            activity.ActiveKilocalories = caloriesElement.GetInt32();
-
-        if (activityElement.TryGetProperty("deviceName", out var deviceElement))
-            activity.DeviceName = deviceElement.GetString();
-
-        if (activityElement.TryGetProperty("manual", out var manualElement))
-            activity.IsManual = manualElement.GetBoolean();
-
-        if (activityElement.TryGetProperty("isWebUpload", out var webUploadElement))
-            activity.IsWebUpload = webUploadElement.GetBoolean();
-
-        return activity;
+        // Set the calculated values
+        activity.DistanceInMeters = maxDistance > 0 ? maxDistance : null;
+        activity.TotalElevationGainInMeters = totalElevationGain > 0 ? totalElevationGain : null;
+        activity.TotalElevationLossInMeters = totalElevationLoss > 0 ? totalElevationLoss : null;
     }
 
     private GarminWebhookType ParseWebhookType(string webhookType)
@@ -341,7 +410,10 @@ public class GarminWebhookService : IGarminWebhookService
 
     public async Task ProcessStoredPayloadsAsync()
     {
-        var unprocessedPayloads = await _context.GarminWebhookPayloads
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        var unprocessedPayloads = await context.GarminWebhookPayloads
             .Where(p => !p.IsProcessed && 
                        (p.NextRetryAt == null || p.NextRetryAt <= DateTime.UtcNow) &&
                        (p.RetryCount ?? 0) < 5)
@@ -353,7 +425,7 @@ public class GarminWebhookService : IGarminWebhookService
         {
             try
             {
-                await ProcessActivityDataAsync(payload.RawPayload, payload.Id);
+                await ProcessActivityDataAsync(payload.RawPayload, payload.Id, scope.ServiceProvider);
             }
             catch (Exception ex)
             {
