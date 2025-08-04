@@ -93,6 +93,8 @@ public class ChallengeActivityResponse
     public decimal ElevationGain { get; set; }
     public int MovingTime { get; set; }
     public DateTime ActivityDate { get; set; }
+    public int LikeCount { get; set; }
+    public bool IsLikedByCurrentUser { get; set; }
 }
 
 public class ChallengeLeaderboardResponse
@@ -104,4 +106,30 @@ public class ChallengeLeaderboardResponse
     public decimal CurrentTotal { get; set; }
     public bool IsCurrentUser { get; set; }
     public DateTime? LastActivityDate { get; set; }
+}
+
+public class ChallengeDailyProgressResponse
+{
+    public int ChallengeId { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public ChallengeType ChallengeType { get; set; }
+    public string ChallengeTypeName { get; set; } = string.Empty;
+    public List<ParticipantDailyProgress> Participants { get; set; } = new();
+}
+
+public class ParticipantDailyProgress
+{
+    public int UserId { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string? FullName { get; set; }
+    public bool IsCurrentUser { get; set; }
+    public List<DailyProgressEntry> DailyProgress { get; set; } = new();
+}
+
+public class DailyProgressEntry
+{
+    public DateTime Date { get; set; }
+    public decimal DayValue { get; set; }
+    public decimal CumulativeValue { get; set; }
 }

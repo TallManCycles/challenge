@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Challenge> Challenges { get; set; }
     public DbSet<ChallengeParticipant> ChallengeParticipants { get; set; }
     public DbSet<Activity> Activities { get; set; }
+    public DbSet<ActivityLike> ActivityLikes { get; set; }
     public DbSet<GarminOAuthToken> GarminOAuthTokens { get; set; }
     public DbSet<GarminActivity> GarminActivities { get; set; }
     public DbSet<GarminWebhookPayload> GarminWebhookPayloads { get; set; }
@@ -89,6 +90,24 @@ public class ApplicationDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // ActivityLike entity configuration
+        modelBuilder.Entity<ActivityLike>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.HasIndex(e => new { e.ActivityId, e.UserId }).IsUnique();
+            
+            entity.HasOne(e => e.Activity)
+                .WithMany()
+                .HasForeignKey(e => e.ActivityId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // GarminOAuthToken entity configuration
         modelBuilder.Entity<GarminOAuthToken>(entity =>
         {
@@ -129,6 +148,7 @@ public class ApplicationDbContext : DbContext
             
             entity.Property(e => e.SummaryId).HasMaxLength(255);
             entity.Property(e => e.ActivityId).HasMaxLength(255);
+            entity.Property(e => e.ActivityName).HasMaxLength(255);
             entity.Property(e => e.DeviceName).HasMaxLength(255);
             entity.Property(e => e.ActivityType)
                 .HasConversion<string>();

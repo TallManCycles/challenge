@@ -3,6 +3,7 @@ import type {
   ChallengeDetails,
   ChallengeActivity,
   ChallengeLeaderboard,
+  ChallengeDailyProgress,
   CreateChallengeRequest,
   UpdateChallengeRequest,
   JoinChallengeRequest
@@ -91,6 +92,10 @@ class ChallengeService {
 
   async getChallengeLeaderboard(id: number): Promise<ChallengeLeaderboard[]> {
     return await this.makeRequest<ChallengeLeaderboard[]>(`/challenge/${id}/leaderboard`)
+  }
+
+  async getChallengeDailyProgress(id: number): Promise<ChallengeDailyProgress> {
+    return await this.makeRequest<ChallengeDailyProgress>(`/challenge/${id}/progress`)
   }
 }
 

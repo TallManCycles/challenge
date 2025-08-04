@@ -110,6 +110,31 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
                 
                 _logger.LogInformation("Updated challenge {ChallengeId} for user {UserId}: added {Value} {Type}", 
                     challenge.Id, activity.UserId, activityValue, challenge.ChallengeType);
+                
+                // Insert the activity into the Activities table if it doesn't already exist
+                var existingActivity = await _context.Activities
+                    .FirstOrDefaultAsync(a => a.GarminActivityId == activity.ActivityId);
+                
+                if (existingActivity == null)
+                {
+                    var newActivity = new Activity
+                    {
+                        UserId = activity.UserId,
+                        GarminActivityId = activity.ActivityId ?? activity.SummaryId,
+                        ActivityName = activity.ActivityName ?? $"{activity.ActivityType} Activity",
+                        Distance = (decimal)(activity.DistanceInMeters ?? 0) / 1000, // Convert to km
+                        ElevationGain = (decimal)(activity.TotalElevationGainInMeters ?? 0),
+                        MovingTime = activity.DurationInSeconds,
+                        ActivityDate = activity.StartTime,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    
+                    _context.Activities.Add(newActivity);
+                    await _context.SaveChangesAsync();
+                    
+                    _logger.LogInformation("Added activity {ActivityId} to Activities table for user {UserId}", 
+                        newActivity.GarminActivityId, activity.UserId);
+                }
             }
         }
         catch (Exception ex)

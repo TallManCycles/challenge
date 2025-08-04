@@ -18,6 +18,8 @@ public class GarminActivity
     [Required]
     public GarminActivityType ActivityType { get; set; }
     
+    public string? ActivityName { get; set; }
+    
     [Required]
     public DateTime StartTime { get; set; }
     

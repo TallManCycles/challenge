@@ -186,7 +186,9 @@ describe('ChallengeService', () => {
         distance: 12.5,
         elevationGain: 250,
         movingTime: 2700,
-        activityDate: '2025-01-30T08:00:00Z'
+        activityDate: '2025-01-30T08:00:00Z',
+        likeCount: 5,
+        isLikedByCurrentUser: false
       }
     ]
 

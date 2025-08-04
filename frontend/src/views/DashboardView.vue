@@ -5,7 +5,7 @@
       <div class="max-w-7xl mx-auto flex items-center justify-between">
         <div class="flex items-center">
           <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
-          
+
           <!-- Desktop Navigation -->
           <nav class="hidden md:flex space-x-6 ml-8">
             <router-link to="/dashboard" class="text-white hover:text-gray-300 transition-colors">Challenges</router-link>
@@ -17,8 +17,8 @@
 
         <div class="flex items-center space-x-4">
           <!-- Desktop Logout Button -->
-          <button 
-            @click="logout" 
+          <button
+            @click="logout"
             class="hidden md:block bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
           >
             Logout
@@ -43,29 +43,29 @@
       <!-- Mobile Menu -->
       <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-800 mt-4 pt-4">
         <nav class="flex flex-col space-y-3">
-          <router-link 
-            to="/dashboard" 
+          <router-link
+            to="/dashboard"
             @click="closeMobileMenu"
             class="text-white hover:text-gray-300 transition-colors py-2"
           >
             Challenges
           </router-link>
-          <router-link 
-            to="/challenges/create" 
+          <router-link
+            to="/challenges/create"
             @click="closeMobileMenu"
             class="text-gray-400 hover:text-gray-300 transition-colors py-2"
           >
             Create Challenge
           </router-link>
-          <router-link 
-            to="/activities" 
+          <router-link
+            to="/activities"
             @click="closeMobileMenu"
             class="text-gray-400 hover:text-gray-300 transition-colors py-2"
           >
             My Activities
           </router-link>
-          <router-link 
-            to="/settings" 
+          <router-link
+            to="/settings"
             @click="closeMobileMenu"
             class="text-gray-400 hover:text-gray-300 transition-colors py-2"
           >
@@ -111,7 +111,7 @@
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
-          <span>Create Challenge</span>
+          <span>Create</span>
         </router-link>
       </div>
 
@@ -146,8 +146,8 @@
 
         <!-- Active challenges grid -->
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div 
-            v-for="challenge in activeChallenges" 
+          <div
+            v-for="challenge in activeChallenges"
             :key="challenge.id"
             class="bg-gray-800 rounded-lg p-6 hover:bg-gray-750 transition-colors cursor-pointer"
             data-testid="active-challenge-card"
@@ -159,7 +159,7 @@
                 <h4 class="text-lg font-semibold text-white mb-1">{{ challenge.title }}</h4>
                 <p class="text-gray-400 text-sm">{{ challenge.description || 'No description' }}</p>
               </div>
-              <span 
+              <span
                 class="px-2 py-1 rounded-full text-xs font-medium"
                 :class="getTypeColorClass(challenge.challengeTypeName)"
               >
@@ -185,7 +185,7 @@
 
             <!-- Participation Status -->
             <div class="flex items-center justify-between">
-              <span 
+              <span
                 v-if="challenge.isUserParticipating"
                 class="px-3 py-1 bg-green-600 text-white rounded-full text-xs font-medium"
               >
@@ -198,7 +198,7 @@
               >
                 Join Challenge
               </button>
-              
+
               <div class="text-right text-xs text-gray-400">
                 {{ getDaysRemaining(challenge.endDate) }} days left
               </div>
@@ -229,8 +229,8 @@
 
         <!-- All challenges list -->
         <div v-else class="space-y-4">
-          <div 
-            v-for="challenge in allChallenges" 
+          <div
+            v-for="challenge in allChallenges"
             :key="challenge.id"
             class="bg-gray-800 rounded-lg p-4 flex items-center justify-between hover:bg-gray-750 transition-colors cursor-pointer"
             data-testid="challenge-card"
@@ -239,13 +239,13 @@
             <div class="flex-1">
               <div class="flex items-center space-x-3 mb-2">
                 <h4 class="text-lg font-medium text-white">{{ challenge.title }}</h4>
-                <span 
+                <span
                   class="px-2 py-1 rounded-full text-xs font-medium"
                   :class="getTypeColorClass(challenge.challengeTypeName)"
                 >
                   {{ challenge.challengeTypeName }}
                 </span>
-                <span 
+                <span
                   v-if="challenge.isUserParticipating"
                   class="px-2 py-1 bg-green-600 text-white rounded-full text-xs font-medium"
                 >
@@ -259,7 +259,7 @@
                 <span>{{ formatDateRange(challenge.startDate, challenge.endDate) }}</span>
               </div>
             </div>
-            
+
             <div class="flex items-center space-x-3">
               <button
                 v-if="!challenge.isUserParticipating && isDateInFuture(challenge.endDate)"
@@ -269,7 +269,7 @@
               >
                 Join
               </button>
-              <span 
+              <span
                 v-else-if="!isDateInFuture(challenge.endDate)"
                 class="px-4 py-2 bg-gray-600 text-gray-300 rounded-lg text-sm font-medium"
               >
@@ -313,8 +313,8 @@ const closeMobileMenu = () => {
 // Computed properties for filtering challenges
 const activeChallenges = computed(() => {
   const now = new Date()
-  return allChallenges.value.filter(challenge => 
-    challenge.isActive && 
+  return allChallenges.value.filter(challenge =>
+    challenge.isActive &&
     new Date(challenge.endDate) > now &&
     challenge.isUserParticipating
   )

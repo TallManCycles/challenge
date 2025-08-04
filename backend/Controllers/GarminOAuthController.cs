@@ -14,10 +14,10 @@ namespace backend.Controllers;
 public class GarminOAuthController : ControllerBase
 {
     private readonly IGarminOAuthService _garminOAuthService;
-    private readonly ILogger<GarminOAuthController> _logger;
+    private readonly IFileLoggingService _logger;
     private readonly GarminOAuthConfig _config;
 
-    public GarminOAuthController(IGarminOAuthService garminOAuthService, ILogger<GarminOAuthController> logger, IOptions<GarminOAuthConfig> config)
+    public GarminOAuthController(IGarminOAuthService garminOAuthService, IOptions<GarminOAuthConfig> config, IFileLoggingService logger)
     {
         _garminOAuthService = garminOAuthService;
         _logger = logger;
@@ -41,7 +41,7 @@ public class GarminOAuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error initiating Garmin OAuth");
+            await _logger.LogErrorAsync("Error initiating Garmin OAuth", ex, "GarminOAuthController");
             return StatusCode(500, new { error = "Failed to initiate Garmin authentication" });
         }
     }
@@ -77,7 +77,7 @@ public class GarminOAuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error handling Garmin OAuth callback");
+            await _logger.LogErrorAsync("Error handling Garmin OAuth callback", ex, "GarminOAuthController");
             return Redirect($"{_config.RedirectUrl}/settings?garmin=error");
         }
     }
@@ -102,7 +102,7 @@ public class GarminOAuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting Garmin OAuth status");
+            await _logger.LogErrorAsync("Error getting Garmin OAuth status", ex, "GarminOauthController");
             return StatusCode(500, new { error = "Failed to get OAuth status" });
         }
     }
@@ -131,7 +131,7 @@ public class GarminOAuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error disconnecting Garmin");
+            await _logger.LogErrorAsync("Error disconnecting Garmin", ex, "GarminOAuthController");
             return StatusCode(500, new { error = "Failed to disconnect Garmin" });
         }
     }

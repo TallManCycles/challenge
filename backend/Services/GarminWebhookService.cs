@@ -94,21 +94,40 @@ public class GarminWebhookService : IGarminWebhookService
 
     private async Task ProcessPingPayloadAsync(string payload, int payloadId, IServiceProvider serviceProvider)
     {
-        using var jsonDoc = JsonDocument.Parse(payload);
-        var root = jsonDoc.RootElement;
-
-        foreach (var summaryType in root.EnumerateObject())
+        if (string.IsNullOrWhiteSpace(payload))
         {
-            if (summaryType.Name == "activities")
+            return; // Nothing to process
+        }
+
+        try
+        {
+            using var jsonDoc = JsonDocument.Parse(payload);
+            var root = jsonDoc.RootElement;
+
+            foreach (var summaryType in root.EnumerateObject())
             {
-                foreach (var activity in summaryType.Value.EnumerateArray())
+                if (summaryType.Name == "activities")
                 {
-                    if (activity.TryGetProperty("callbackURL", out var callbackUrlElement))
+                    foreach (var activity in summaryType.Value.EnumerateArray())
                     {
-                        string callbackUrl = callbackUrlElement.GetString() ?? "";
-                        await FetchAndProcessActivityDataAsync(callbackUrl, payloadId, serviceProvider);
+                        if (activity.TryGetProperty("callbackURL", out var callbackUrlElement))
+                        {
+                            string callbackUrl = callbackUrlElement.GetString() ?? "";
+                            await FetchAndProcessActivityDataAsync(callbackUrl, payloadId, serviceProvider);
+                        }
                     }
                 }
+            }
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Invalid JSON in ping payload {PayloadId}", payloadId);
+            var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
+            var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
+            if (webhookPayload != null)
+            {
+                webhookPayload.ProcessingError = $"Invalid JSON in ping payload: {ex.Message}";
+                await context.SaveChangesAsync();
             }
         }
     }
@@ -150,21 +169,29 @@ public class GarminWebhookService : IGarminWebhookService
         {
             using var jsonDoc = JsonDocument.Parse(activityData);
             var root = jsonDoc.RootElement;
+            bool allActivitiesProcessed = true;
 
             if (root.TryGetProperty("activityDetails", out var activitiesElement))
             {
                 foreach (var activityElement in activitiesElement.EnumerateArray())
                 {
-                    await ProcessSingleActivityAsync(activityElement, payloadId, serviceProvider);
+                    bool activityProcessed = await ProcessSingleActivityAsync(activityElement, payloadId, serviceProvider);
+                    if (!activityProcessed)
+                    {
+                        allActivitiesProcessed = false;
+                    }
                 }
             }
             
-            // Mark payload as processed
+            // Mark payload as processed only if all activities were processed successfully
             var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
             if (webhookPayload != null)
             {
-                webhookPayload.IsProcessed = true;
-                webhookPayload.ProcessedAt = DateTime.UtcNow;
+                webhookPayload.IsProcessed = allActivitiesProcessed;
+                if (allActivitiesProcessed)
+                {
+                    webhookPayload.ProcessedAt = DateTime.UtcNow;
+                }
                 await context.SaveChangesAsync();
             }
         }
@@ -176,7 +203,7 @@ public class GarminWebhookService : IGarminWebhookService
             var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
             if (webhookPayload != null)
             {
-                webhookPayload.ProcessingError = ex.Message;
+                webhookPayload.ProcessingError = $"Error processing activity data: {ex.Message}";
                 webhookPayload.RetryCount = (webhookPayload.RetryCount ?? 0) + 1;
                 webhookPayload.NextRetryAt = DateTime.UtcNow.AddMinutes(Math.Pow(2, webhookPayload.RetryCount.Value));
                 await context.SaveChangesAsync();
@@ -184,7 +211,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
     }
 
-    private async Task ProcessSingleActivityAsync(JsonElement activityElement, int payloadId, IServiceProvider serviceProvider)
+    private async Task<bool> ProcessSingleActivityAsync(JsonElement activityElement, int payloadId, IServiceProvider serviceProvider)
     {
         var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
         
@@ -199,7 +226,7 @@ public class GarminWebhookService : IGarminWebhookService
             if (exists)
             {
                 _logger.LogInformation("Activity {SummaryId} already exists, skipping", summaryId);
-                return;
+                return true; // Duplicate is considered successful
             }
 
             // Extract user ID from various possible locations
@@ -207,7 +234,7 @@ public class GarminWebhookService : IGarminWebhookService
             if (userId == 0)
             {
                 _logger.LogWarning("Could not extract userId from activity {SummaryId}", summaryId);
-                return;
+                return false; // Failed to process due to missing user
             }
 
             // Parse activity data
@@ -238,11 +265,12 @@ public class GarminWebhookService : IGarminWebhookService
             });
 
             _logger.LogInformation("Successfully processed activity {SummaryId} for user {UserId}", summaryId, userId);
+            return true; // Successfully processed
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing single activity from payload {PayloadId}", payloadId);
-            throw;
+            return false; // Failed to process due to exception
         }
     }
 
@@ -312,6 +340,11 @@ public class GarminWebhookService : IGarminWebhookService
                 }
             }
 
+            if (summaryElement.TryGetProperty("activityName", out var activityNameElement))
+            {
+                activity.ActivityName = activityNameElement.GetString();
+            }
+
             if (summaryElement.TryGetProperty("startTimeInSeconds", out var startTimeElement))
             {
                 activity.StartTime = DateTimeOffset.FromUnixTimeSeconds(startTimeElement.GetInt64()).DateTime;
@@ -331,6 +364,9 @@ public class GarminWebhookService : IGarminWebhookService
 
             if (summaryElement.TryGetProperty("isWebUpload", out var webUploadElement))
                 activity.IsWebUpload = webUploadElement.GetBoolean();
+            
+            if (summaryElement.TryGetProperty("activeKilocalories", out var caloriesElement) && caloriesElement.ValueKind == JsonValueKind.Number)
+                activity.ActiveKilocalories = caloriesElement.GetInt32();
         }
 
         // Process samples array for distance and elevation data
@@ -430,6 +466,14 @@ public class GarminWebhookService : IGarminWebhookService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to reprocess payload {PayloadId}", payload.Id);
+                var errorPayload = await context.GarminWebhookPayloads.FindAsync(payload.Id);
+                if (errorPayload != null)
+                {
+                    errorPayload.ProcessingError = $"Failed to reprocess payload: {ex.Message}";
+                    errorPayload.RetryCount = (errorPayload.RetryCount ?? 0) + 1;
+                    errorPayload.NextRetryAt = DateTime.UtcNow.AddMinutes(Math.Pow(2, errorPayload.RetryCount.Value));
+                    await context.SaveChangesAsync();
+                }
             }
         }
     }

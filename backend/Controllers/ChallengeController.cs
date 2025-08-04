@@ -314,13 +314,14 @@ public class ChallengeController : ControllerBase
     [HttpGet("{id}/activities")]
     public async Task<ActionResult<IEnumerable<ChallengeActivityResponse>>> GetChallengeActivities(int id, [FromQuery] int limit = 10)
     {
+        var currentUserId = GetCurrentUserId();
         var challenge = await _context.Challenges.FindAsync(id);
         if (challenge == null)
         {
             return NotFound();
         }
 
-        // Get recent activities from challenge participants
+        // Get recent activities from challenge participants with like information
         var activities = await _context.Activities
             .Include(a => a.User)
             .Where(a => a.User.ChallengeParticipations.Any(cp => cp.ChallengeId == id) && 
@@ -338,7 +339,9 @@ public class ChallengeController : ControllerBase
                 Distance = a.Distance,
                 ElevationGain = a.ElevationGain,
                 MovingTime = a.MovingTime,
-                ActivityDate = a.ActivityDate
+                ActivityDate = a.ActivityDate,
+                LikeCount = _context.ActivityLikes.Count(al => al.ActivityId == a.Id),
+                IsLikedByCurrentUser = _context.ActivityLikes.Any(al => al.ActivityId == a.Id && al.UserId == currentUserId)
             })
             .ToListAsync();
 
@@ -382,5 +385,121 @@ public class ChallengeController : ControllerBase
         }
 
         return Ok(orderedParticipants);
+    }
+
+    [HttpGet("{id}/progress")]
+    public async Task<ActionResult<ChallengeDailyProgressResponse>> GetChallengeDailyProgress(int id)
+    {
+        var currentUserId = GetCurrentUserId();
+        
+        var challenge = await _context.Challenges.FindAsync(id);
+        if (challenge == null)
+        {
+            return NotFound();
+        }
+
+        // Get all participants
+        var participants = await _context.ChallengeParticipants
+            .Include(cp => cp.User)
+            .Where(cp => cp.ChallengeId == id)
+            .ToListAsync();
+
+        if (!participants.Any())
+        {
+            return Ok(new ChallengeDailyProgressResponse
+            {
+                ChallengeId = id,
+                StartDate = challenge.StartDate,
+                EndDate = challenge.EndDate,
+                Participants = new List<ParticipantDailyProgress>()
+            });
+        }
+
+        var participantUserIds = participants.Select(p => p.UserId).ToList();
+
+        // Get all activities for participants within the challenge date range
+        var activities = await _context.Activities
+            .Where(a => participantUserIds.Contains(a.UserId) && 
+                       a.ActivityDate >= challenge.StartDate && 
+                       a.ActivityDate <= challenge.EndDate)
+            .OrderBy(a => a.ActivityDate)
+            .ToListAsync();
+
+        // Generate date range from challenge start to end (or today if ongoing)
+        var endDate = challenge.EndDate > DateTime.UtcNow ? DateTime.UtcNow.Date : challenge.EndDate.Date;
+        var dateRange = GenerateDateRange(challenge.StartDate.Date, endDate);
+
+        // Calculate daily progress for each participant
+        var participantProgressList = new List<ParticipantDailyProgress>();
+
+        foreach (var participant in participants)
+        {
+            var userActivities = activities.Where(a => a.UserId == participant.UserId).ToList();
+            var dailyProgress = new List<DailyProgressEntry>();
+            decimal cumulativeTotal = 0;
+
+            foreach (var date in dateRange)
+            {
+                var dayActivities = userActivities.Where(a => a.ActivityDate.Date == date).ToList();
+                decimal dayValue = 0;
+
+                foreach (var activity in dayActivities)
+                {
+                    switch (challenge.ChallengeType)
+                    {
+                        case ChallengeType.Distance:
+                            dayValue += activity.Distance;
+                            break;
+                        case ChallengeType.Elevation:
+                            dayValue += activity.ElevationGain;
+                            break;
+                        case ChallengeType.Time:
+                            dayValue += activity.MovingTime / 3600m; // Convert seconds to hours
+                            break;
+                    }
+                }
+
+                cumulativeTotal += dayValue;
+                dailyProgress.Add(new DailyProgressEntry
+                {
+                    Date = date,
+                    DayValue = dayValue,
+                    CumulativeValue = cumulativeTotal
+                });
+            }
+
+            participantProgressList.Add(new ParticipantDailyProgress
+            {
+                UserId = participant.UserId,
+                Username = participant.User.Username,
+                FullName = participant.User.FullName,
+                IsCurrentUser = participant.UserId == currentUserId,
+                DailyProgress = dailyProgress
+            });
+        }
+
+        return Ok(new ChallengeDailyProgressResponse
+        {
+            ChallengeId = id,
+            StartDate = challenge.StartDate,
+            EndDate = challenge.EndDate,
+            ChallengeType = challenge.ChallengeType,
+            ChallengeTypeName = challenge.ChallengeType.ToString(),
+            Participants = participantProgressList
+        });
+    }
+
+    private List<DateTime> GenerateDateRange(DateTime startDate, DateTime endDate)
+    {
+        var dates = new List<DateTime>();
+        var currentDate = startDate;
+        
+        while (currentDate <= endDate)
+        {
+            dates.Add(currentDate);
+            currentDate = currentDate.AddDays(1);
+        }
+        
+        return dates;
     }
 }

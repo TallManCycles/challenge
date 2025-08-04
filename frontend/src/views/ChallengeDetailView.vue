@@ -50,37 +50,11 @@
           <!-- Progress Comparison Chart -->
           <div class="bg-gray-800 rounded-lg p-6">
             <h3 class="text-xl font-semibold text-white mb-6">Progress Comparison</h3>
-            <div class="relative h-80">
-              <!-- Chart placeholder - would integrate with a charting library like Chart.js -->
-              <div class="absolute inset-0 flex items-center justify-center">
-                <div class="text-center">
-                  <div class="w-16 h-16 bg-gray-700 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                    <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                  </div>
-                  <p class="text-gray-400">Progress chart will be displayed here</p>
-                </div>
-              </div>
-            </div>
-            <div class="flex items-center justify-center space-x-6 mt-4 text-sm">
-              <div class="flex items-center space-x-2">
-                <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span class="text-gray-300">You</span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                <span class="text-gray-300">Alex Rivera</span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span class="text-gray-300">Mike Johnson</span>
-              </div>
-              <div class="flex items-center space-x-2">
-                <div class="w-3 h-3 bg-gray-500 rounded-full"></div>
-                <span class="text-gray-300">Challenge Goal</span>
-              </div>
-            </div>
+            <ChallengeProgressChart 
+              v-if="challenge"
+              :challenge-id="challenge.id"
+              :challenge-type="challenge.challengeType"
+            />
           </div>
 
           <!-- Recent Activities -->
@@ -103,15 +77,28 @@
                     <span class="text-gray-400 text-sm">{{ activity.activityName }}</span>
                   </div>
                   <p class="text-gray-300 text-sm">
-                    {{ activity.distance.toFixed(1) }} miles • {{ formatDuration(activity.movingTime) }}
+                    {{ activity.distance.toFixed(1) }} km • {{ formatDuration(activity.movingTime) }}
                   </p>
                   <p class="text-gray-500 text-xs">{{ formatTimeAgo(activity.activityDate) }}</p>
                 </div>
-                <div class="flex items-center space-x-1 text-gray-400">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                  </svg>
-                  <span class="text-sm">{{ Math.floor(Math.random() * 20) + 1 }}</span>
+                <div class="flex items-center space-x-1">
+                  <button 
+                    @click="toggleLike(activity)"
+                    class="flex items-center space-x-1 transition-colors"
+                    :class="activity.isLikedByCurrentUser ? 'text-red-500' : 'text-gray-400 hover:text-red-400'"
+                    :disabled="likingActivity === activity.id"
+                  >
+                    <svg 
+                      class="w-4 h-4 transition-transform"
+                      :class="likingActivity === activity.id ? 'animate-pulse' : ''"
+                      :fill="activity.isLikedByCurrentUser ? 'currentColor' : 'none'" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    <span class="text-sm">{{ activity.likeCount }}</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -120,30 +107,30 @@
 
         <!-- Right Column -->
         <div class="space-y-6">
-          <!-- Your Progress Card -->
+          <!-- Your Position Card -->
           <div class="bg-gradient-to-br from-blue-600 to-purple-700 rounded-lg p-6 text-white">
-            <h3 class="text-lg font-semibold mb-4">Your Progress</h3>
+            <h3 class="text-lg font-semibold mb-4">Your Position</h3>
             <div class="text-center mb-4">
-              <div class="text-4xl font-bold mb-1">{{ userProgress.completed }}</div>
+              <div class="text-4xl font-bold mb-1">{{ userPosition.total }}</div>
               <div class="text-blue-200 text-sm">{{ challenge?.challengeTypeName || 'units' }} completed</div>
             </div>
             
-            <!-- Progress Bar -->
-            <div class="bg-blue-800 bg-opacity-50 rounded-full h-2 mb-4">
-              <div 
-                class="bg-white h-2 rounded-full transition-all duration-500"
-                :style="{ width: userProgress.percentage + '%' }"
-              ></div>
+            <!-- Position Status -->
+            <div class="text-center mb-4">
+              <div class="text-2xl font-bold mb-1" :class="userPosition.statusColor">
+                {{ userPosition.positionText }}
+              </div>
+              <div class="text-blue-200 text-sm">{{ userPosition.statusMessage }}</div>
             </div>
             
             <div class="flex justify-between text-sm">
               <div class="text-center">
-                <div class="font-semibold">{{ userProgress.percentage }}%</div>
-                <div class="text-blue-200">Complete</div>
+                <div class="font-semibold">#{{ userPosition.rank }}</div>
+                <div class="text-blue-200">Position</div>
               </div>
-              <div class="text-center">
-                <div class="font-semibold">{{ userProgress.remaining }}</div>
-                <div class="text-blue-200">{{ challenge?.challengeTypeName || 'Units' }} Left</div>
+              <div class="text-center" v-if="userPosition.gapToLeader !== null">
+                <div class="font-semibold">{{ formatGapValue(userPosition.gapToLeader) }}</div>
+                <div class="text-blue-200">{{ userPosition.gapToLeader >= 0 ? 'Ahead' : 'Behind' }}</div>
               </div>
             </div>
           </div>
@@ -198,7 +185,57 @@
           </div>
         </div>
       </div>
+
+      <!-- Leave Challenge Section -->
+      <div v-if="challenge && isUserParticipating" class="max-w-7xl mx-auto px-6 py-6 mt-8 border-t border-gray-800">
+        <div class="text-center">
+          <h3 class="text-lg font-medium text-gray-300 mb-2">Want to leave this challenge?</h3>
+          <p class="text-gray-500 text-sm mb-4">
+            You'll lose your current progress and won't receive any more activity updates for this challenge.
+          </p>
+          <button
+            @click="showLeaveConfirmation = true"
+            :disabled="leavingChallenge"
+            class="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+          >
+            {{ leavingChallenge ? 'Leaving...' : 'Leave Challenge' }}
+          </button>
+        </div>
+      </div>
     </main>
+
+    <!-- Leave Confirmation Modal -->
+    <div v-if="showLeaveConfirmation" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-gray-800 rounded-lg p-6 max-w-md mx-4">
+        <div class="text-center">
+          <div class="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-semibold text-white mb-2">Leave Challenge?</h3>
+          <p class="text-gray-300 mb-6">
+            Are you sure you want to leave "{{ challenge?.title }}"? This action cannot be undone and you'll lose your current progress.
+          </p>
+          <div class="flex space-x-3">
+            <button
+              @click="showLeaveConfirmation = false"
+              :disabled="leavingChallenge"
+              class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-800 text-white rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              @click="leaveChallenge"
+              :disabled="leavingChallenge"
+              class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-800 text-white rounded-lg transition-colors"
+            >
+              {{ leavingChallenge ? 'Leaving...' : 'Leave Challenge' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -206,6 +243,8 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { challengeService } from '../services/challenge'
+import { activityService } from '../services/activity'
+import ChallengeProgressChart from '../components/ChallengeProgressChart.vue'
 import type { ChallengeDetails, ChallengeActivity, ChallengeLeaderboard } from '../types/challenge'
 
 const route = useRoute()
@@ -215,43 +254,154 @@ const loading = ref(true)
 const challenge = ref<ChallengeDetails | null>(null)
 const recentActivities = ref<ChallengeActivity[]>([])
 const leaderboard = ref<ChallengeLeaderboard[]>([])
+const likingActivity = ref<number | null>(null)
+const showLeaveConfirmation = ref(false)
+const leavingChallenge = ref(false)
 
 const goBack = () => {
   router.push('/dashboard')
 }
 
-// Calculate user's progress based on challenge data
-const userProgress = computed(() => {
-  if (!challenge.value) {
-    return { completed: 0, percentage: 0, remaining: 0 }
+const isUserParticipating = computed(() => {
+  if (!challenge.value) return false
+  return challenge.value.participants.some(p => p.isCurrentUser)
+})
+
+const leaveChallenge = async () => {
+  if (!challenge.value) return
+  
+  try {
+    leavingChallenge.value = true
+    await challengeService.leaveChallenge(challenge.value.id)
+    
+    // Close modal and navigate back to dashboard
+    showLeaveConfirmation.value = false
+    router.push('/dashboard')
+  } catch (error) {
+    console.error('Failed to leave challenge:', error)
+    // Could show a toast notification here
+    leavingChallenge.value = false
+  }
+}
+
+const toggleLike = async (activity: ChallengeActivity) => {
+  try {
+    likingActivity.value = activity.id
+    
+    if (activity.isLikedByCurrentUser) {
+      // Unlike the activity
+      const response = await activityService.unlikeActivity(activity.id)
+      activity.likeCount = response.likeCount
+      activity.isLikedByCurrentUser = response.isLiked
+    } else {
+      // Like the activity
+      const response = await activityService.likeActivity(activity.id)
+      activity.likeCount = response.likeCount
+      activity.isLikedByCurrentUser = response.isLiked
+    }
+  } catch (error) {
+    console.error('Failed to toggle like:', error)
+    // Could show a toast notification here
+  } finally {
+    likingActivity.value = null
+  }
+}
+
+// Calculate user's position relative to other participants
+const userPosition = computed(() => {
+  if (!challenge.value || !leaderboard.value.length) {
+    return { 
+      total: 0, 
+      rank: 0, 
+      positionText: 'Loading...', 
+      statusMessage: '', 
+      statusColor: 'text-gray-300',
+      gapToLeader: null
+    }
   }
 
-  // Find current user's participation data
-  const currentUserParticipation = challenge.value.participants.find(p => p.isCurrentUser)
-  if (!currentUserParticipation) {
-    return { completed: 0, percentage: 0, remaining: 0 }
+  // Find current user in leaderboard
+  const currentUser = leaderboard.value.find(p => p.isCurrentUser)
+  if (!currentUser) {
+    return { 
+      total: 0, 
+      rank: 0, 
+      positionText: 'Not Participating', 
+      statusMessage: '', 
+      statusColor: 'text-gray-300',
+      gapToLeader: null
+    }
   }
 
-  const completed = currentUserParticipation.currentTotal
+  const total = currentUser.currentTotal
+  const rank = currentUser.position
   
-  // Calculate goal based on challenge type (mock goals for now)
-  let goal = 100 // Default goal
-  switch (challenge.value.challengeType) {
-    case 1: // Distance
-      goal = 100
-      break
-    case 2: // Elevation
-      goal = 10000
-      break
-    case 3: // Time
-      goal = 20
-      break
+  // Calculate gap - if user is leader, compare to second place, otherwise compare to leader
+  let gapToLeader = 0
+  if (rank === 1 && leaderboard.value.length > 1) {
+    // User is in first place, compare to second place
+    const secondPlace = leaderboard.value[1]
+    gapToLeader = total - secondPlace.currentTotal // This will be positive (ahead)
+  } else if (rank > 1) {
+    // User is not in first place, compare to leader
+    const leader = leaderboard.value[0]
+    gapToLeader = total - leader.currentTotal // This will be negative (behind)
   }
-  
-  const percentage = Math.round((completed / goal) * 100)
-  const remaining = Math.max(0, goal - completed)
-  
-  return { completed, percentage, remaining }
+
+  // Format total display based on challenge type
+  const formatValue = (value: number) => {
+    if (challenge.value?.challengeType === 3) { // Time challenge
+      return formatDuration(value * 3600) // Convert hours back to seconds for formatting
+    }
+    return value.toFixed(1)
+  }
+
+  // Format gap display based on challenge type
+  const formatGap = (gap: number) => {
+    if (challenge.value?.challengeType === 3) { // Time challenge
+      return formatDuration(Math.abs(gap) * 3600) // Convert hours back to seconds for formatting
+    }
+    return Math.abs(gap).toFixed(1)
+  }
+
+  let positionText = ''
+  let statusMessage = ''
+  let statusColor = 'text-white'
+
+  if (rank === 1) {
+    positionText = '🏆 LEADING'
+    if (leaderboard.value.length > 1) {
+      statusMessage = `${formatGap(gapToLeader)} ahead of 2nd place`
+    } else {
+      statusMessage = 'You\'re in first place!'
+    }
+    statusColor = 'text-yellow-300'
+  } else if (rank === 2) {
+    positionText = '🥈 2ND PLACE'
+    statusMessage = `${formatGap(gapToLeader)} behind leader`
+    statusColor = 'text-gray-300'
+  } else if (rank === 3) {
+    positionText = '🥉 3RD PLACE'
+    statusMessage = `${formatGap(gapToLeader)} behind leader`
+    statusColor = 'text-orange-300'
+  } else {
+    positionText = `#${rank}`
+    if (leaderboard.value.length > 1) {
+      statusMessage = `${formatGap(gapToLeader)} behind leader`
+    } else {
+      statusMessage = 'Keep going!'
+    }
+    statusColor = 'text-blue-200'
+  }
+
+  return { 
+    total: formatValue(total), 
+    rank, 
+    positionText, 
+    statusMessage, 
+    statusColor,
+    gapToLeader: (leaderboard.value.length > 1 && gapToLeader !== 0) ? gapToLeader : null
+  }
 })
 
 const getPositionColorClass = (position: number) => {
@@ -292,6 +442,13 @@ const formatDuration = (seconds: number) => {
   } else {
     return `${minutes} min`
   }
+}
+
+const formatGapValue = (gap: number) => {
+  if (challenge.value?.challengeType === 3) { // Time challenge
+    return formatDuration(Math.abs(gap) * 3600) // Convert hours back to seconds for formatting
+  }
+  return Math.abs(gap).toFixed(1)
 }
 
 const loadChallengeDetails = async () => {

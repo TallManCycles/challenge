@@ -5,7 +5,7 @@
       <div class="max-w-7xl mx-auto flex items-center justify-between">
         <div class="flex items-center">
           <h1 class="text-xl font-bold text-white">ChallengeHub</h1>
-          
+
           <!-- Desktop Navigation -->
           <nav class="hidden md:flex space-x-6 ml-8">
             <router-link to="/dashboard" class="text-gray-400 hover:text-gray-300 transition-colors">Challenges</router-link>
@@ -17,8 +17,8 @@
 
         <div class="flex items-center space-x-4">
           <!-- Desktop Logout Button -->
-          <button 
-            @click="logout" 
+          <button
+            @click="logout"
             class="hidden md:block bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
           >
             Logout
@@ -43,29 +43,29 @@
       <!-- Mobile Menu -->
       <div v-if="mobileMenuOpen" class="md:hidden border-t border-gray-800 mt-4 pt-4">
         <nav class="flex flex-col space-y-3">
-          <router-link 
-            to="/dashboard" 
+          <router-link
+            to="/dashboard"
             @click="closeMobileMenu"
             class="text-gray-400 hover:text-gray-300 transition-colors py-2"
           >
             Challenges
           </router-link>
-          <router-link 
-            to="/challenges/create" 
+          <router-link
+            to="/challenges/create"
             @click="closeMobileMenu"
             class="text-gray-400 hover:text-gray-300 transition-colors py-2"
           >
             Create Challenge
           </router-link>
-          <router-link 
-            to="/activities" 
+          <router-link
+            to="/activities"
             @click="closeMobileMenu"
             class="text-gray-400 hover:text-gray-300 transition-colors py-2"
           >
             My Activities
           </router-link>
-          <router-link 
-            to="/settings" 
+          <router-link
+            to="/settings"
             @click="closeMobileMenu"
             class="text-white hover:text-gray-300 transition-colors py-2"
           >
@@ -91,7 +91,7 @@
 
       <!-- Toast Notifications -->
       <div v-if="showToast" class="fixed top-4 right-4 z-50">
-        <div 
+        <div
           :class="`px-6 py-4 rounded-lg shadow-lg ${toastType === 'success' ? 'bg-green-600' : toastType === 'error' ? 'bg-red-600' : 'bg-blue-600'} text-white flex items-center space-x-3`"
         >
           <svg v-if="toastType === 'success'" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -192,6 +192,33 @@
           </div>
         </section>
 
+        <div class="flex items-center justify-between">
+          <div class="flex space-x-3">
+            <button
+              type="button"
+              @click="cancelChanges"
+              class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              :disabled="isSubmitting"
+              class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 px-6 rounded-lg font-medium transition-colors flex items-center"
+            >
+              <svg v-if="isSubmitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <svg v-else class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+              {{ isSubmitting ? 'Saving...' : 'Save Settings' }}
+            </button>
+          </div>
+        </div>
+
         <!-- Integrations Section -->
         <section class="bg-gray-800 rounded-lg p-6">
           <div class="flex items-center mb-6">
@@ -218,8 +245,8 @@
                 :disabled="isConnectingGarmin"
                 :class="[
                   'w-full py-2 px-4 rounded-lg font-medium transition-colors mb-2',
-                  garminStatus.isConnected 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                  garminStatus.isConnected
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
                     : 'bg-red-600 hover:bg-red-700 text-white',
                   isConnectingGarmin && 'opacity-50 cursor-not-allowed'
                 ]"
@@ -294,41 +321,6 @@
             </div>
           </div>
         </section>
-
-        <!-- Footer -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-center text-sm text-gray-400">
-            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-            </svg>
-            Changes will be saved automatically
-          </div>
-
-          <div class="flex space-x-3">
-            <button
-              type="button"
-              @click="cancelChanges"
-              class="bg-gray-700 hover:bg-gray-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
-            >
-              Cancel
-            </button>
-            
-            <button
-              type="submit"
-              :disabled="isSubmitting"
-              class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-2 px-6 rounded-lg font-medium transition-colors flex items-center"
-            >
-              <svg v-if="isSubmitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <svg v-else class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-              {{ isSubmitting ? 'Saving...' : 'Save Settings' }}
-            </button>
-          </div>
-        </div>
       </form>
     </main>
   </div>
@@ -394,7 +386,7 @@ const loadGarminStatus = async () => {
 const checkOAuthCallback = () => {
   const urlParams = new URLSearchParams(window.location.search)
   const garminResult = urlParams.get('garmin')
-  
+
   if (garminResult === 'success') {
     showToastMessage('Garmin Connect connected successfully!', 'success')
     loadGarminStatus() // Refresh status
@@ -424,7 +416,7 @@ const showToastMessage = (message: string, type: 'success' | 'error' | 'info' = 
   toastMessage.value = message
   toastType.value = type
   showToast.value = true
-  
+
   setTimeout(() => {
     hideToast()
   }, 5000)
@@ -461,7 +453,7 @@ const handleGarminIntegration = async () => {
     try {
       isConnectingGarmin.value = true
       showToastMessage('Redirecting to Garmin Connect...', 'info')
-      
+
       const oauthData = await garminService.initiateOAuth()
       garminService.redirectToGarmin(oauthData.url)
     } catch (error) {
@@ -487,7 +479,7 @@ const cancelChanges = async () => {
 
 const handleSubmit = async () => {
   if (isSubmitting.value) return
-  
+
   isSubmitting.value = true
 
   try {
@@ -511,10 +503,10 @@ const handleSubmit = async () => {
     }
 
     showToastMessage('Settings saved successfully!', 'success')
-    
+
     // Refresh user data in auth store
     await authStore.getCurrentUser()
-    
+
   } catch (error) {
     console.error('Settings update failed:', error)
     showToastMessage(
