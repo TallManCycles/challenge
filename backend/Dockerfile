@@ -47,6 +47,11 @@ ENV Frontend__AllowedOrigins__0="http://localhost:5173"
 ENV Frontend__AllowedOrigins__1="http://localhost:3000"
 ENV Frontend__AllowedOrigins__2="https://your-frontend-domain.com"
 
+ENV GarminOAuth__ConsumerKey=""
+ENV GarminOAuth__ConsumerSecret=""
+ENV GarminOAuth__CallbackUrl=""
+ENV GarminOAuth__RedirectUrl=""
+
 # Logging configuration
 ENV Logging__LogLevel__Default="Information"
 ENV Logging__LogLevel__Microsoft_AspNetCore="Warning"
