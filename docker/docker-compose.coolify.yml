@@ -35,10 +35,10 @@ services:
       - Frontend__AllowedOrigins__1=${FRONTEND_ORIGIN_1} # Optional
       - Logging__LogLevel__Default=Warning
       - Logging__LogLevel__Microsoft_AspNetCore=Warning
-      - GarminOAuth__ConsumerKey=""
-      - GarminOAuth__ConsumerSecret=""
-      - GarminOAuth__CallbackUrl=""
-      - GarminOAuth__RedirectUrl=""
+      - GarminOAuth__ConsumerKey="${GARMINOAUTH_CONSUMER_KEY}"
+      - GarminOAuth__ConsumerSecret="${GARMINOAUTH_CONSUMER_SECRET}"
+      - GarminOAuth__CallbackUrl="${GARMINOAUTH_CALLBACK_URL}"
+      - GarminOAuth__RedirectUrl="${GARMINOAUTH_REDIRECT_URL}"
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
