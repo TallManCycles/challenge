@@ -11,11 +11,11 @@ namespace backend.Controllers;
 public class GarminActivitiesController : ControllerBase
 {
     private readonly IGarminActivityProcessingService _activityService;
-    private readonly ILogger<GarminActivitiesController> _logger;
+    private readonly IFileLoggingService _logger;
 
     public GarminActivitiesController(
         IGarminActivityProcessingService activityService,
-        ILogger<GarminActivitiesController> logger)
+        IFileLoggingService logger)
     {
         _activityService = activityService;
         _logger = logger;
@@ -68,7 +68,7 @@ public class GarminActivitiesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting user activities");
+            await _logger.LogErrorAsync("Error getting user activities", ex, "GarminActivitiesController");
             return StatusCode(500, new { error = "Failed to get activities" });
         }
     }
@@ -116,7 +116,7 @@ public class GarminActivitiesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting cycling activities");
+            await _logger.LogErrorAsync("Error getting cycling activities",ex, "GarminActivitiesController");
             return StatusCode(500, new { error = "Failed to get cycling activities" });
         }
     }
@@ -162,7 +162,7 @@ public class GarminActivitiesController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting activity details for {ActivityId}", activityId);
+            await _logger.LogErrorAsync($"Error getting activity details for {activityId}",ex,"GarminActivitiesController" );
             return StatusCode(500, new { error = "Failed to get activity details" });
         }
     }

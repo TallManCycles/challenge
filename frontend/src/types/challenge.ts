@@ -68,6 +68,8 @@ export interface ChallengeActivity {
   elevationGain: number
   movingTime: number
   activityDate: string
+  likeCount: number
+  isLikedByCurrentUser: boolean
 }
 
 export interface ChallengeLeaderboard {
@@ -78,4 +80,27 @@ export interface ChallengeLeaderboard {
   currentTotal: number
   isCurrentUser: boolean
   lastActivityDate?: string
+}
+
+export interface DailyProgressEntry {
+  date: string
+  dayValue: number
+  cumulativeValue: number
+}
+
+export interface ParticipantDailyProgress {
+  userId: number
+  username: string
+  fullName?: string
+  isCurrentUser: boolean
+  dailyProgress: DailyProgressEntry[]
+}
+
+export interface ChallengeDailyProgress {
+  challengeId: number
+  startDate: string
+  endDate: string
+  challengeType: ChallengeType
+  challengeTypeName: string
+  participants: ParticipantDailyProgress[]
 }

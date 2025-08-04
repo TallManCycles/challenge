@@ -65,7 +65,9 @@ const mockActivities: ChallengeActivity[] = [
     distance: 12.5,
     elevationGain: 250,
     movingTime: 2700, // 45 minutes
-    activityDate: '2025-01-30T08:00:00Z'
+    activityDate: '2025-01-30T08:00:00Z',
+    likeCount: 3,
+    isLikedByCurrentUser: false
   },
   {
     id: 2,
@@ -76,7 +78,9 @@ const mockActivities: ChallengeActivity[] = [
     distance: 25.7,
     elevationGain: 1200,
     movingTime: 6300, // 1h 45m
-    activityDate: '2025-01-29T10:00:00Z'
+    activityDate: '2025-01-29T10:00:00Z',
+    likeCount: 7,
+    isLikedByCurrentUser: true
   }
 ]
 
@@ -115,7 +119,25 @@ vi.mock('../services/challenge', () => ({
   challengeService: {
     getChallenge: vi.fn(() => Promise.resolve(mockChallengeDetails)),
     getChallengeActivities: vi.fn(() => Promise.resolve(mockActivities)),
-    getChallengeLeaderboard: vi.fn(() => Promise.resolve(mockLeaderboard))
+    getChallengeLeaderboard: vi.fn(() => Promise.resolve(mockLeaderboard)),
+    getChallengeDailyProgress: vi.fn(() => Promise.resolve({
+      challengeId: 1,
+      startDate: '2025-01-15T00:00:00Z',
+      endDate: '2025-02-15T00:00:00Z',
+      challengeType: 1,
+      challengeTypeName: 'Distance',
+      participants: []
+    })),
+    leaveChallenge: vi.fn(() => Promise.resolve({ message: 'Successfully left challenge' }))
+  }
+}))
+
+// Mock the activity service
+vi.mock('../services/activity', () => ({
+  activityService: {
+    likeActivity: vi.fn(() => Promise.resolve({ message: 'Activity liked', likeCount: 1, isLiked: true })),
+    unlikeActivity: vi.fn(() => Promise.resolve({ message: 'Activity unliked', likeCount: 0, isLiked: false })),
+    getActivityLikes: vi.fn(() => Promise.resolve({ likeCount: 0, isLiked: false }))
   }
 }))
 
@@ -194,25 +216,30 @@ describe('ChallengeDetailView', () => {
   })
 
   describe('User Progress Display', () => {
-    it('calculates and displays user progress correctly', async () => {
+    it('calculates and displays user position correctly', async () => {
       const wrapper = await createWrapper()
       await flushPromises()
 
-      // Check progress card content
-      const progressCard = wrapper.find('.bg-gradient-to-br')
-      expect(progressCard.exists()).toBe(true)
-      expect(progressCard.text()).toContain('73.2') // User's current total
-      expect(progressCard.text()).toContain('73%') // Calculated percentage
-      expect(progressCard.text()).toContain('26') // Remaining (rounded)
+      // Check position card content
+      const positionCard = wrapper.find('.bg-gradient-to-br')
+      expect(positionCard.exists()).toBe(true)
+      expect(positionCard.text()).toContain('73.2') // User's current total
+      expect(positionCard.text()).toContain('🥉 3RD PLACE') // Position text
+      expect(positionCard.text()).toContain('#3') // Position number
     })
 
-    it('shows correct progress bar width', async () => {
+    it('shows position information instead of progress bar', async () => {
       const wrapper = await createWrapper()
       await flushPromises()
 
+      // Should not have progress bar anymore
       const progressBar = wrapper.find('.bg-white.h-2.rounded-full')
-      expect(progressBar.exists()).toBe(true)
-      expect(progressBar.attributes('style')).toContain('width: 73%')
+      expect(progressBar.exists()).toBe(false)
+
+      // Should have position information
+      const positionCard = wrapper.find('.bg-gradient-to-br')
+      expect(positionCard.text()).toContain('Your Position')
+      expect(positionCard.text()).toContain('Position')
     })
 
     it('displays challenge type correctly', async () => {
@@ -231,12 +258,12 @@ describe('ChallengeDetailView', () => {
 
       const activitiesH3 = wrapper.findAll('h3').find((h3) => h3.text() === 'Recent Activities')
       expect(activitiesH3).toBeDefined()
-      
+
       // Check that activities are displayed
       expect(wrapper.text()).toContain('Morning ride')
       expect(wrapper.text()).toContain('Weekend adventure')
-      expect(wrapper.text()).toContain('12.5 miles')
-      expect(wrapper.text()).toContain('25.7 miles')
+      expect(wrapper.text()).toContain('12.5 km')
+      expect(wrapper.text()).toContain('25.7 km')
     })
 
     it('formats activity duration correctly', async () => {
@@ -345,14 +372,16 @@ describe('ChallengeDetailView', () => {
       expect(wrapper.text()).toContain('You')
       expect(wrapper.text()).toContain('Alex Rivera')
       expect(wrapper.text()).toContain('Mike Johnson')
-      expect(wrapper.text()).toContain('Challenge Goal')
+      // Challenge Goal was removed from the chart
+      expect(wrapper.text()).not.toContain('Challenge Goal')
     })
 
-    it('displays chart placeholder', async () => {
+    it('displays chart component', async () => {
       const wrapper = await createWrapper()
       await flushPromises()
 
-      expect(wrapper.text()).toContain('Progress chart will be displayed here')
+      // The chart component should be rendered (even if showing loading/error state)
+      expect(wrapper.text()).toContain('Progress Comparison')
     })
   })
 
@@ -363,7 +392,7 @@ describe('ChallengeDetailView', () => {
 
       const routerPushSpy = vi.spyOn(router, 'push')
       const backButton = wrapper.find('[data-testid="back-button"]')
-      
+
       await backButton.trigger('click')
       expect(routerPushSpy).toHaveBeenCalledWith('/dashboard')
     })
@@ -375,7 +404,7 @@ describe('ChallengeDetailView', () => {
       mockService.getChallenge.mockRejectedValueOnce(new Error('Challenge not found'))
 
       const routerPushSpy = vi.spyOn(router, 'push')
-      
+
       await createWrapper('999')
       await flushPromises()
 
@@ -386,13 +415,13 @@ describe('ChallengeDetailView', () => {
       // This test verifies that the component doesn't crash when API calls fail
       // Since the current implementation redirects on any error, we'll just test that it doesn't crash
       const mockService = vi.mocked((await import('../services/challenge')).challengeService)
-      
+
       mockService.getChallenge.mockRejectedValueOnce(new Error('API Error'))
       mockService.getChallengeActivities.mockRejectedValueOnce(new Error('API Error'))
       mockService.getChallengeLeaderboard.mockRejectedValueOnce(new Error('API Error'))
 
       const routerPushSpy = vi.spyOn(router, 'push')
-      
+
       await createWrapper()
       await flushPromises()
 
@@ -404,13 +433,13 @@ describe('ChallengeDetailView', () => {
   describe('Data Loading', () => {
     it('makes all required API calls in parallel', async () => {
       const mockService = vi.mocked((await import('../services/challenge')).challengeService)
-      
+
       // Reset mocks to ensure clean state
       vi.resetAllMocks()
       mockService.getChallenge.mockResolvedValueOnce(mockChallengeDetails)
       mockService.getChallengeActivities.mockResolvedValueOnce(mockActivities)
       mockService.getChallengeLeaderboard.mockResolvedValueOnce(mockLeaderboard)
-      
+
       await createWrapper('1')
       await flushPromises()
 
@@ -425,7 +454,7 @@ describe('ChallengeDetailView', () => {
         challengeType: 2,
         challengeTypeName: 'Elevation'
       }
-      
+
       const mockService = vi.mocked((await import('../services/challenge')).challengeService)
       mockService.getChallenge.mockResolvedValueOnce(elevationChallenge)
 
@@ -433,8 +462,9 @@ describe('ChallengeDetailView', () => {
       await flushPromises()
 
       expect(wrapper.text()).toContain('Elevation')
-      // Should calculate progress with elevation goal (10,000) - 73.2/10000 = 0.7%
-      expect(wrapper.find('.bg-white.h-2.rounded-full').attributes('style')).toContain('width: 1%')
+      // Should show position-based display instead of progress bar
+      expect(wrapper.text()).toContain('Your Position')
+      expect(wrapper.text()).toContain('73.2')
     })
   })
 
@@ -443,7 +473,7 @@ describe('ChallengeDetailView', () => {
       const wrapper = await createWrapper()
       await flushPromises()
 
-      const fullLeaderboardButton = wrapper.findAll('button').find((btn) => 
+      const fullLeaderboardButton = wrapper.findAll('button').find((btn) =>
         btn.text() === 'View Full Leaderboard'
       )
       expect(fullLeaderboardButton).toBeDefined()
