@@ -1,198 +1,137 @@
-using Microsoft.EntityFrameworkCore;
-using System.Security.Cryptography;
-using System.Text;
 using backend.Data;
 using backend.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services;
 
-public class DatabaseSeeder
+public class QuoteService : IQuoteService
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<QuoteService> _logger;
 
-    public DatabaseSeeder(ApplicationDbContext context)
+    public QuoteService(IServiceProvider serviceProvider, ILogger<QuoteService> logger)
     {
-        _context = context;
+        _serviceProvider = serviceProvider;
+        _logger = logger;
     }
 
-    public async Task SeedAsync()
+    public async Task<Quote?> GetRandomQuoteAsync()
     {
-        // Ensure database is created
-        await _context.Database.EnsureCreatedAsync();
-
-        // Skip seeding if data already exists
-        if (await _context.Users.AnyAsync())
-        {
-            // Still seed quotes if they don't exist
-            await SeedQuotesIfNeeded();
-            return;
-        }
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         
-        const string testPassword = "Password123!";
-
-        // Create test users
-        var users = new List<User>
+        var activeQuotes = await context.Quotes.Where(q => q.IsActive).ToListAsync();
+        if (!activeQuotes.Any())
         {
-            new User
-            {
-                Username = "alex_rivera",
-                Email = "alex.rivera@example.com",
-                FullName = "Alex Rivera",
-                PasswordHash = HashPassword(testPassword),
-                CreatedAt = DateTime.UtcNow.AddDays(-30),
-                UpdatedAt = DateTime.UtcNow.AddDays(-30)
-            },
-            new User
-            {
-                Username = "mike_johnson",
-                Email = "mike.johnson@example.com",
-                FullName = "Mike Johnson",
-                PasswordHash = HashPassword(testPassword),
-                CreatedAt = DateTime.UtcNow.AddDays(-25),
-                UpdatedAt = DateTime.UtcNow.AddDays(-25)
-            },
-            new User
-            {
-                Username = "sarah_chen",
-                Email = "sarah.chen@example.com",
-                FullName = "Sarah Chen",
-                PasswordHash = HashPassword(testPassword),
-                CreatedAt = DateTime.UtcNow.AddDays(-20),
-                UpdatedAt = DateTime.UtcNow.AddDays(-20)
-            }
-        };
+            return null;
+        }
 
-        await _context.Users.AddRangeAsync(users);
-        await _context.SaveChangesAsync();
-
-        // Create test challenges
-        var challenges = new List<Challenge>
-        {
-            new Challenge
-            {
-                Title = "100 Mile Challenge",
-                Description = "Complete 100 miles of cycling in 4 weeks",
-                CreatedById = users[0].Id, // Alex Rivera
-                ChallengeType = ChallengeType.Distance,
-                StartDate = DateTime.UtcNow.AddDays(-14),
-                EndDate = DateTime.UtcNow.AddDays(14),
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-14),
-                UpdatedAt = DateTime.UtcNow.AddDays(-14)
-            },
-            new Challenge
-            {
-                Title = "Mountain Climber",
-                Description = "Gain 10,000 feet of elevation in 3 weeks",
-                CreatedById = users[1].Id, // Mike Johnson
-                ChallengeType = ChallengeType.Elevation,
-                StartDate = DateTime.UtcNow.AddDays(-10),
-                EndDate = DateTime.UtcNow.AddDays(11),
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-10),
-                UpdatedAt = DateTime.UtcNow.AddDays(-10)
-            },
-            new Challenge
-            {
-                Title = "Time Trial Masters",
-                Description = "Accumulate 20 hours of cycling time",
-                CreatedById = users[2].Id, // Sarah Chen
-                ChallengeType = ChallengeType.Time,
-                StartDate = DateTime.UtcNow.AddDays(-7),
-                EndDate = DateTime.UtcNow.AddDays(21),
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow.AddDays(-7),
-                UpdatedAt = DateTime.UtcNow.AddDays(-7)
-            }
-        };
-
-        await _context.Challenges.AddRangeAsync(challenges);
-        await _context.SaveChangesAsync();
-
-        // Create challenge participants
-        var participants = new List<ChallengeParticipant>
-        {
-            // 100 Mile Challenge participants
-            new ChallengeParticipant { ChallengeId = challenges[0].Id, UserId = users[0].Id, CurrentTotal = 95.3m, JoinedAt = DateTime.UtcNow.AddDays(-14) },
-            new ChallengeParticipant { ChallengeId = challenges[0].Id, UserId = users[1].Id, CurrentTotal = 87.6m, JoinedAt = DateTime.UtcNow.AddDays(-13) },
-            new ChallengeParticipant { ChallengeId = challenges[0].Id, UserId = users[2].Id, CurrentTotal = 73.2m, JoinedAt = DateTime.UtcNow.AddDays(-12) },
-
-            // Mountain Climber participants
-            new ChallengeParticipant { ChallengeId = challenges[1].Id, UserId = users[1].Id, CurrentTotal = 8500m, JoinedAt = DateTime.UtcNow.AddDays(-10) },
-            new ChallengeParticipant { ChallengeId = challenges[1].Id, UserId = users[0].Id, CurrentTotal = 7200m, JoinedAt = DateTime.UtcNow.AddDays(-9) },
-            new ChallengeParticipant { ChallengeId = challenges[1].Id, UserId = users[2].Id, CurrentTotal = 6800m, JoinedAt = DateTime.UtcNow.AddDays(-8) },
-
-            // Time Trial Masters participants
-            new ChallengeParticipant { ChallengeId = challenges[2].Id, UserId = users[2].Id, CurrentTotal = 16.5m, JoinedAt = DateTime.UtcNow.AddDays(-7) },
-            new ChallengeParticipant { ChallengeId = challenges[2].Id, UserId = users[0].Id, CurrentTotal = 14.2m, JoinedAt = DateTime.UtcNow.AddDays(-6) },
-            new ChallengeParticipant { ChallengeId = challenges[2].Id, UserId = users[1].Id, CurrentTotal = 12.8m, JoinedAt = DateTime.UtcNow.AddDays(-5) }
-        };
-
-        await _context.ChallengeParticipants.AddRangeAsync(participants);
-        await _context.SaveChangesAsync();
-
-        // Create 20 activities
-        var activities = new List<Activity>();
         var random = new Random();
-        var activityTypes = new[] { "Morning ride", "Evening commute", "Weekend adventure", "Lunch break ride", "Training session", "Recovery ride" };
-
-        for (int i = 0; i < 20; i++)
-        {
-            var user = users[i % 3];
-            var daysAgo = random.Next(1, 14);
-            var distance = Math.Round((decimal)(random.NextDouble() * 25 + 5), 1); // 5-30 miles
-            var elevation = Math.Round((decimal)(random.NextDouble() * 1500 + 100), 0); // 100-1600 feet
-            var time = random.Next(1800, 7200); // 30 minutes to 2 hours in seconds
-            
-            activities.Add(new Activity
-            {
-                UserId = user.Id,
-                GarminActivityId = Guid.NewGuid().ToString(),
-                ActivityName = activityTypes[random.Next(activityTypes.Length)],
-                Distance = distance,
-                ElevationGain = elevation,
-                MovingTime = time,
-                ActivityDate = DateTime.UtcNow.AddDays(-daysAgo),
-                CreatedAt = DateTime.UtcNow.AddDays(-daysAgo)
-            });
-        }
-
-        await _context.Activities.AddRangeAsync(activities);
-        await _context.SaveChangesAsync();
-
-        // Update LastActivityDate for participants
-        foreach (var participant in participants)
-        {
-            var lastActivity = activities
-                .Where(a => a.UserId == participant.UserId)
-                .OrderByDescending(a => a.ActivityDate)
-                .FirstOrDefault();
-            
-            if (lastActivity != null)
-            {
-                participant.LastActivityDate = lastActivity.ActivityDate;
-            }
-        }
-
-        await _context.SaveChangesAsync();
-
-        // Seed quotes
-        await SeedQuotesIfNeeded();
+        var randomIndex = random.Next(activeQuotes.Count);
+        return activeQuotes[randomIndex];
     }
 
-    private async Task SeedQuotesIfNeeded()
+    public async Task<Quote?> GetRandomQuoteByCategoryAsync(string category)
     {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        var activeQuotes = await context.Quotes
+            .Where(q => q.IsActive && q.Category == category)
+            .ToListAsync();
+            
+        if (!activeQuotes.Any())
+        {
+            return null;
+        }
+
+        var random = new Random();
+        var randomIndex = random.Next(activeQuotes.Count);
+        return activeQuotes[randomIndex];
+    }
+
+    public async Task<List<Quote>> GetAllQuotesAsync()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        return await context.Quotes.Where(q => q.IsActive).ToListAsync();
+    }
+
+    public async Task<Quote?> GetQuoteByIdAsync(int id)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        return await context.Quotes.FindAsync(id);
+    }
+
+    public async Task<Quote> AddQuoteAsync(Quote quote)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        context.Quotes.Add(quote);
+        await context.SaveChangesAsync();
+        return quote;
+    }
+
+    public async Task<Quote?> UpdateQuoteAsync(int id, Quote quote)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        var existingQuote = await context.Quotes.FindAsync(id);
+        if (existingQuote == null)
+        {
+            return null;
+        }
+
+        existingQuote.Text = quote.Text;
+        existingQuote.Author = quote.Author;
+        existingQuote.Category = quote.Category;
+        existingQuote.IsActive = quote.IsActive;
+
+        await context.SaveChangesAsync();
+        return existingQuote;
+    }
+
+    public async Task<bool> DeleteQuoteAsync(int id)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
+        var quote = await context.Quotes.FindAsync(id);
+        if (quote == null)
+        {
+            return false;
+        }
+
+        context.Quotes.Remove(quote);
+        await context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<int> SeedQuotesAsync()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        
         // Check if quotes already exist
-        var existingCount = await _context.Quotes.CountAsync();
+        var existingCount = await context.Quotes.CountAsync();
         if (existingCount > 0)
         {
-            return;
+            _logger.LogInformation("Quotes already exist in database. Skipping seed.");
+            return 0;
         }
 
         var quotes = GetQuotesData();
         
-        _context.Quotes.AddRange(quotes);
-        await _context.SaveChangesAsync();
+        context.Quotes.AddRange(quotes);
+        await context.SaveChangesAsync();
+        
+        _logger.LogInformation("Seeded {Count} quotes into database", quotes.Count);
+        return quotes.Count;
     }
 
     private static List<Quote> GetQuotesData()
@@ -230,7 +169,7 @@ public class DatabaseSeeder
             new Quote { Text = "The sprint is 90% mental and 10% physical.", Author = "Robbie McEwen", Category = "Competition & Victory" },
             new Quote { Text = "Winning is not everything, but wanting to win is.", Author = "Erik Zabel", Category = "Competition & Victory" },
             new Quote { Text = "I don't ride a bike to add days to my life. I ride a bike to add life to my days.", Author = "Mario Cipollini", Category = "Competition & Victory" },
-            new Quote { Text = "The finish line is just the beginning of a whole new race.", Author = "Mark Cavendish", Category = "Competition & Victory" },
+            new Quote { Text = "The finish line is just the beginning of a whole new race.", Author = "Cavendish Marshall", Category = "Competition & Victory" },
             new Quote { Text = "Every race teaches you something about yourself.", Author = "Thor Hushovd", Category = "Competition & Victory" },
             new Quote { Text = "Attacking is my way of racing.", Author = "Philippe Gilbert", Category = "Competition & Victory" },
             new Quote { Text = "I race with my heart, not just my legs.", Author = "Julian Alaphilippe", Category = "Competition & Victory" },
@@ -271,10 +210,5 @@ public class DatabaseSeeder
             new Quote { Text = "Speed is earned through dedication and sacrifice.", Author = "Jasper Philipsen", Category = "Modern Era Motivation" },
             new Quote { Text = "Breaking new ground requires courage and unwavering belief.", Author = "Biniam Girmay", Category = "Modern Era Motivation" }
         };
-    }
-
-    private static string HashPassword(string password)
-    {
-        return BCrypt.Net.BCrypt.HashPassword(password);
     }
 }

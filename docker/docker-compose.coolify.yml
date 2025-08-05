@@ -39,6 +39,10 @@ services:
       - GarminOAuth__ConsumerSecret=${GARMINOAUTH_CONSUMER_SECRET}
       - GarminOAuth__CallbackUrl=${GARMINOAUTH_CALLBACK_URL}
       - GarminOAuth__RedirectUrl=${GARMINOAUTH_REDIRECT_URL}
+      - AWS__Region=${AWS_REGION:-us-east-1}
+      - AWS__AccessKey=${AWS_ACCESS_KEY}
+      - AWS__SecretKey=${AWS_SECRET_KEY}
+      - Email__FromAddress=${EMAIL_FROM_ADDRESS}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
