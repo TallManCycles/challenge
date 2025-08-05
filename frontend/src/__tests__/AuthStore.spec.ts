@@ -26,7 +26,7 @@ describe('AuthStore', () => {
 
   it('initializes with correct default state', () => {
     const authStore = useAuthStore()
-    
+
     expect(authStore.user).toBeNull()
     expect(authStore.isLoading).toBe(false)
     expect(authStore.error).toBeNull()
@@ -51,7 +51,8 @@ describe('AuthStore', () => {
       id: 1,
       email: 'test@example.com',
       username: 'testuser',
-      garminConnected: false
+      garminConnected: false,
+      emailNotificationsEnabled: false
     })
 
     await authStore.login({
@@ -66,14 +67,15 @@ describe('AuthStore', () => {
 
   it('updates isAuthenticated state on logout', () => {
     const authStore = useAuthStore()
-    
+
     // Set initial authenticated state
     authStore.isAuthenticated = true
     authStore.user = {
       id: 1,
       email: 'test@example.com',
       username: 'testuser',
-      garminConnected: false
+      garminConnected: false,
+      emailNotificationsEnabled: false
     }
 
     // Logout
@@ -112,7 +114,8 @@ describe('AuthStore', () => {
       id: 1,
       email: 'test@example.com',
       username: 'testuser',
-      garminConnected: false
+      garminConnected: false,
+      emailNotificationsEnabled: false
     })
 
     const authStore = useAuthStore()
