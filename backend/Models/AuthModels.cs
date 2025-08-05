@@ -92,4 +92,6 @@ public class UpdateProfileRequest
     
     [MaxLength(100)]
     public string? FullName { get; set; }
+
+    public bool? EmailNotificationsEnabled { get; set; }
 }

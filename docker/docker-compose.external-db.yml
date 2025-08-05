@@ -19,6 +19,14 @@ services:
       - Frontend__AllowedOrigins__2=${FRONTEND_ORIGIN_2}
       - Logging__LogLevel__Default=${LOG_LEVEL_DEFAULT:-Warning}
       - Logging__LogLevel__Microsoft_AspNetCore=${LOG_LEVEL_ASPNETCORE:-Warning}
+      - AWS__Region=${AWS_REGION:-us-east-1}
+      - AWS__AccessKey=${AWS_ACCESS_KEY}
+      - AWS__SecretKey=${AWS_SECRET_KEY}
+      - Email__FromAddress=${EMAIL_FROM_ADDRESS}
+      - GarminOAuth__ConsumerKey=${GARMINOAUTH_CONSUMER_KEY}
+      - GarminOAuth__ConsumerSecret=${GARMINOAUTH_CONSUMER_SECRET}
+      - GarminOAuth__CallbackUrl=${GARMINOAUTH_CALLBACK_URL}
+      - GarminOAuth__RedirectUrl=${GARMINOAUTH_REDIRECT_URL}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]

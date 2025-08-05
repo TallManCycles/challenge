@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json.Serialization;
+using Amazon.SimpleEmail;
+using Amazon.Extensions.NETCore.Setup;
+using Amazon.Runtime;
 using backend.Data;
 using backend.Services;
     
@@ -16,6 +19,33 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IFileLoggingService, FileLoggingService>();
+
+// Configure Email Services - Check if AWS credentials are provided
+var hasAwsCredentials = !string.IsNullOrEmpty(builder.Configuration["AWS:AccessKey"]) && 
+                       !string.IsNullOrEmpty(builder.Configuration["AWS:SecretKey"]);
+
+if (hasAwsCredentials)
+{
+    // Configure AWS SES when credentials are available
+    Console.WriteLine("AWS credentials found - configuring AWS SES for email service");
+    var awsOptions = builder.Configuration.GetAWSOptions();
+    awsOptions.Credentials = new BasicAWSCredentials(
+        builder.Configuration["AWS:AccessKey"], 
+        builder.Configuration["AWS:SecretKey"]);
+    
+    builder.Services.AddDefaultAWSOptions(awsOptions);
+    builder.Services.AddAWSService<IAmazonSimpleEmailService>();
+    builder.Services.AddScoped<IEmailService, AwsSesEmailService>();
+    Console.WriteLine($"AWS SES configured for region: {awsOptions.Region}");
+}
+else
+{
+    // Use Mock service when AWS credentials are not provided
+    Console.WriteLine("No AWS credentials found - using Mock email service");
+    builder.Services.AddScoped<IEmailService, MockEmailService>();
+}
+builder.Services.AddScoped<IChallengeNotificationService, ChallengeNotificationService>();
+builder.Services.AddScoped<IQuoteService, QuoteService>();
 
 // Configure Garmin OAuth
 builder.Services.Configure<backend.Models.GarminOAuthConfig>(builder.Configuration.GetSection("GarminOAuth"));

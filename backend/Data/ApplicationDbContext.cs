@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<GarminOAuthToken> GarminOAuthTokens { get; set; }
     public DbSet<GarminActivity> GarminActivities { get; set; }
     public DbSet<GarminWebhookPayload> GarminWebhookPayloads { get; set; }
+    public DbSet<Quote> Quotes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -171,6 +172,20 @@ public class ApplicationDbContext : DbContext
             
             entity.Property(e => e.WebhookType)
                 .HasConversion<string>();
+        });
+
+        // Quote entity configuration
+        modelBuilder.Entity<Quote>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.HasIndex(e => e.Author);
+            entity.HasIndex(e => e.Category);
+            entity.HasIndex(e => e.IsActive);
+            
+            entity.Property(e => e.Text).HasMaxLength(1000);
+            entity.Property(e => e.Author).HasMaxLength(200);
+            entity.Property(e => e.Category).HasMaxLength(100);
         });
     }
 }
