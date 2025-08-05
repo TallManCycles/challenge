@@ -230,7 +230,7 @@ public class DatabaseSeeder
             new Quote { Text = "The sprint is 90% mental and 10% physical.", Author = "Robbie McEwen", Category = "Competition & Victory" },
             new Quote { Text = "Winning is not everything, but wanting to win is.", Author = "Erik Zabel", Category = "Competition & Victory" },
             new Quote { Text = "I don't ride a bike to add days to my life. I ride a bike to add life to my days.", Author = "Mario Cipollini", Category = "Competition & Victory" },
-            new Quote { Text = "The finish line is just the beginning of a whole new race.", Author = "Cavendish Marshall", Category = "Competition & Victory" },
+            new Quote { Text = "The finish line is just the beginning of a whole new race.", Author = "Mark Cavendish", Category = "Competition & Victory" },
             new Quote { Text = "Every race teaches you something about yourself.", Author = "Thor Hushovd", Category = "Competition & Victory" },
             new Quote { Text = "Attacking is my way of racing.", Author = "Philippe Gilbert", Category = "Competition & Victory" },
             new Quote { Text = "I race with my heart, not just my legs.", Author = "Julian Alaphilippe", Category = "Competition & Victory" },
