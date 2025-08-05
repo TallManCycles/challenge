@@ -1,3 +1,5 @@
+using backend.Models;
+
 namespace backend.Services;
 
 public class MockEmailService : IEmailService
@@ -30,7 +32,16 @@ public class MockEmailService : IEmailService
             toEmail, userName, activityName, challengeTitle, activityValue, challengeType);
         
         // Get a random cyclist quote
-        var quote = await _quoteService.GetRandomQuoteAsync();
+        Quote? quote = null;
+        try
+        {
+            quote = await _quoteService.GetRandomQuoteAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve quote for email notification");
+        }
+        
         var quoteText = quote != null ? $" | Quote: \"{quote.Text}\" - {quote.Author}" : "";
         
         var subject = $"New Activity in Challenge: {challengeTitle}";

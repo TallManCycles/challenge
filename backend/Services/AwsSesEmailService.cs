@@ -1,5 +1,6 @@
 using Amazon.SimpleEmail;
 using Amazon.SimpleEmail.Model;
+using backend.Models;
 
 namespace backend.Services;
 
@@ -88,7 +89,16 @@ public class AwsSesEmailService : IEmailService
         var subject = $"New Activity in Challenge: {challengeTitle}";
         
         // Get a random cyclist quote
-        var quote = await _quoteService.GetRandomQuoteAsync();
+        Quote? quote = null;
+        try
+        {
+            quote = await _quoteService.GetRandomQuoteAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve quote for email notification");
+        }
+        
         var quoteSection = quote != null 
             ? $@"
         <div style='border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px; text-align: center; color: #6b7280; font-style: italic;'>

@@ -14,6 +14,7 @@ public class GarminActivityProcessingServiceTests
 {
     private ApplicationDbContext _context;
     private Mock<ILogger<GarminActivityProcessingService>> _mockLogger;
+    private Mock<IChallengeNotificationService> _mockNotificationService;
     private GarminActivityProcessingService _service;
 
     [SetUp]
@@ -21,7 +22,8 @@ public class GarminActivityProcessingServiceTests
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
         _mockLogger = new Mock<ILogger<GarminActivityProcessingService>>();
-        _service = new GarminActivityProcessingService(_context, _mockLogger.Object);
+        _mockNotificationService = new Mock<IChallengeNotificationService>();
+        _service = new GarminActivityProcessingService(_context, _mockLogger.Object, _mockNotificationService.Object);
         
         CreateTestData();
     }
