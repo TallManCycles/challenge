@@ -23,8 +23,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy the published app
 COPY --from=build /app/publish ./
 
-# Set ownership of app directory
-RUN chown -R appuser:appuser /app
+# Create logs directory and set ownership
+RUN mkdir -p /app/logs && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
