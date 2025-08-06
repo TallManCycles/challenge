@@ -45,7 +45,7 @@ services:
       - Email__FromAddress=${EMAIL_FROM_ADDRESS}
       - GarminDailyFetch__RunOnStartup=${GARMIN_DAILY_FETCH_RUN_ON_STARTUP:-true}
     volumes:
-      - ${LOGS_DIR:-backend_logs}:/app/logs
+      - backend_logs:/app/logs
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
