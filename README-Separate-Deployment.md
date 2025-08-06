@@ -1,40 +1,30 @@
-# Separate Service Deployment
+# Docker Deployment with Coolify
 
-This guide explains how to deploy the frontend and backend services separately using individual Docker Compose files.
+This guide explains how to deploy the full stack application using the Coolify Docker Compose configuration.
 
 ## Quick Start
 
-### Deploy Both Services
+### Deploy All Services
 ```bash
-.\deploy-fullstack.bat
-```
-
-### Deploy Backend Only
-```bash
-.\deploy-backend.bat
-```
-
-### Deploy Frontend Only
-```bash
-.\deploy-frontend.bat
+.\deploy-scripts\deploy-fullstack.bat
 ```
 
 ## Manual Commands
 
-### Backend Service
+### Using Coolify Configuration
 
 ```bash
-# Start backend
-docker-compose -f docker/docker-compose.backend.yml up --build -d
+# Start all services
+docker-compose -f docker/docker-compose.coolify.yml up --build -d
 
-# View backend logs
-docker-compose -f docker/docker-compose.backend.yml logs -f
+# View logs
+docker-compose -f docker/docker-compose.coolify.yml logs -f
 
-# Stop backend
-docker-compose -f docker/docker-compose.backend.yml down
+# Stop all services
+docker-compose -f docker/docker-compose.coolify.yml down
 
-# Check backend status
-docker-compose -f docker/docker-compose.backend.yml ps
+# Check status
+docker-compose -f docker/docker-compose.coolify.yml ps
 ```
 
 **Backend will be available at:**
@@ -42,20 +32,13 @@ docker-compose -f docker/docker-compose.backend.yml ps
 - Health Check: http://localhost:8080/api/health
 - Swagger UI: http://localhost:8080/swagger
 
-### Frontend Service
+### Service-Specific Commands
 
 ```bash
-# Start frontend
-docker-compose -f docker/docker-compose.frontend.yml up --build -d
-
-# View frontend logs
-docker-compose -f docker/docker-compose.frontend.yml logs -f
-
-# Stop frontend
-docker-compose -f docker/docker-compose.frontend.yml down
-
-# Check frontend status
-docker-compose -f docker/docker-compose.frontend.yml ps
+# View specific service logs
+docker-compose -f docker/docker-compose.coolify.yml logs -f backend
+docker-compose -f docker/docker-compose.coolify.yml logs -f frontend
+docker-compose -f docker/docker-compose.coolify.yml logs -f postgres
 ```
 
 **Frontend will be available at:**
@@ -101,11 +84,8 @@ DATA_VOLUME_PATH=./data
 
 ### Development
 ```bash
-# Backend only (for API development)
-.\deploy-backend.bat
-
-# Frontend only (for UI development with external API)
-.\deploy-frontend.bat
+# Deploy all services
+.\deploy-scripts\deploy-fullstack.bat
 ```
 
 ### Testing
@@ -145,20 +125,10 @@ FRONTEND_PORT=4000
 
 ```
 ├── docker/
-│   ├── docker-compose.yml              # Original combined file (still works)
-│   ├── docker-compose.backend.yml      # Backend service only
-│   ├── docker-compose.frontend.yml     # Frontend service only
-│   ├── docker-compose.postgres.yml     # PostgreSQL service only
-│   ├── docker-compose.external-db.yml  # External database deployment
-│   ├── docker-compose.coolify.yml      # Coolify deployment
-│   └── docker-compose.coolify-test.yml # Local Coolify testing
-├── deploy-backend.bat              # Backend deployment script
-├── deploy-frontend.bat             # Frontend deployment script
-├── deploy-fullstack.bat            # Deploy both services
+│   └── docker-compose.coolify.yml      # Coolify deployment
 ├── .env                               # Shared environment configuration
 └── docker/
     ├── .env.example                   # Example environment variables
     ├── .env.production                # Production environment template
-    ├── .env.coolify                   # Coolify deployment template
-    └── .env.coolify-test              # Local Coolify testing
+    └── .env.coolify                   # Coolify deployment template
 ```

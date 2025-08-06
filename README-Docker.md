@@ -1,6 +1,6 @@
 # Local Docker Deployment
 
-This guide helps you run the full-stack application (frontend + backend) locally using Docker.
+This guide helps you run the full-stack application (frontend + backend) locally using Docker with the Coolify configuration.
 
 ## Prerequisites
 
@@ -10,13 +10,13 @@ This guide helps you run the full-stack application (frontend + backend) locally
 
 1. **Start Docker Desktop**
 
-2. **Run the deployment script:**
+2. **Run the application using docker-compose.coolify.yml:**
    ```bash
-   .\deploy-local.bat
+   docker-compose -f docker/docker-compose.coolify.yml up --build -d
    ```
 
 3. **Access your application:**
-   - Frontend: http://localhost:3000
+   - Frontend: http://localhost:80
    - Backend API: http://localhost:8080
    - Swagger UI: http://localhost:8080/swagger
 
@@ -55,27 +55,28 @@ FRONTEND_ORIGIN_1=http://localhost:3000
 
 ### Start Services
 ```bash
-docker-compose --env-file .env.local up --build -d
+docker-compose -f docker/docker-compose.coolify.yml up --build -d
 ```
 
 ### View Logs
 ```bash
 # All services
-docker-compose --env-file .env.local logs -f
+docker-compose -f docker/docker-compose.coolify.yml logs -f
 
 # Specific service
-docker-compose --env-file .env.local logs -f backend
-docker-compose --env-file .env.local logs -f frontend
+docker-compose -f docker/docker-compose.coolify.yml logs -f backend
+docker-compose -f docker/docker-compose.coolify.yml logs -f frontend
+docker-compose -f docker/docker-compose.coolify.yml logs -f postgres
 ```
 
 ### Stop Services
 ```bash
-docker-compose --env-file .env.local down
+docker-compose -f docker/docker-compose.coolify.yml down
 ```
 
 ### Rebuild and Restart
 ```bash
-docker-compose --env-file .env.local up --build -d
+docker-compose -f docker/docker-compose.coolify.yml up --build -d
 ```
 
 ## Data Persistence

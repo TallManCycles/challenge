@@ -16,13 +16,13 @@ public interface IGarminWebhookService
 public class GarminWebhookService : IGarminWebhookService
 {
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<GarminWebhookService> _logger;
+    private readonly IFileLoggingService _logger;
     private readonly IGarminActivityProcessingService _activityProcessingService;
     private readonly IServiceScopeFactory _scopeFactory;
 
     public GarminWebhookService(
         IHttpClientFactory httpClientFactory,
-        ILogger<GarminWebhookService> logger,
+        IFileLoggingService logger,
         IGarminActivityProcessingService activityProcessingService,
         IServiceScopeFactory scopeFactory)
     {
@@ -57,7 +57,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process ping notification for type {WebhookType}", webhookType);
+            await _logger.LogErrorAsync("Failed to process ping notification for type {WebhookType}", ex, "GarminWebhookService");
             return false;
         }
     }
@@ -87,7 +87,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process push notification for type {WebhookType}", webhookType);
+            await _logger.LogErrorAsync("Failed to process push notification for type {WebhookType}", ex, "GarminWebhookService");
             return false;
         }
     }
@@ -121,7 +121,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (JsonException ex)
         {
-            _logger.LogError(ex, "Invalid JSON in ping payload {PayloadId}", payloadId);
+            await _logger.LogErrorAsync("Invalid JSON in ping payload {PayloadId}", ex, "GarminWebhookService");
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
             var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
             if (webhookPayload != null)
@@ -146,13 +146,12 @@ public class GarminWebhookService : IGarminWebhookService
             }
             else
             {
-                _logger.LogWarning("Failed to fetch activity data from callback URL: {CallbackUrl}, Status: {StatusCode}", 
-                    callbackUrl, response.StatusCode);
+                await _logger.LogWarningAsync($"Failed to fetch activity data from callback URL: {callbackUrl}, Status: {response.StatusCode}");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching activity data from callback URL: {CallbackUrl}", callbackUrl);
+            await _logger.LogErrorAsync("Error fetching activity data from callback URL: {CallbackUrl}", ex, "GarminWebhookService");
         }
     }
 
@@ -197,7 +196,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing activity data for payload {PayloadId}", payloadId);
+            await _logger.LogErrorAsync("Error processing activity data for payload {PayloadId}", ex, "GarminWebhookService");
             
             // Mark payload as failed
             var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
@@ -225,7 +224,7 @@ public class GarminWebhookService : IGarminWebhookService
             
             if (exists)
             {
-                _logger.LogInformation("Activity {SummaryId} already exists, skipping", summaryId);
+                await _logger.LogInfoAsync($"Activity {summaryId} already exists, skipping");
                 return true; // Duplicate is considered successful
             }
 
@@ -233,7 +232,7 @@ public class GarminWebhookService : IGarminWebhookService
              int userId = await ExtractUserIdAsync(activityElement, serviceProvider);
             if (userId == 0)
             {
-                _logger.LogWarning("Could not extract userId from activity {SummaryId}", summaryId);
+                await _logger.LogWarningAsync($"Could not extract userId from activity {summaryId}");
                 return false; // Failed to process due to missing user
             }
 
@@ -250,7 +249,7 @@ public class GarminWebhookService : IGarminWebhookService
             {
                 // Create a new scope for this background task.
                 using var scope = _scopeFactory.CreateScope();
-                var logger = scope.ServiceProvider.GetRequiredService<ILogger<GarminWebhookService>>();
+                var logger = scope.ServiceProvider.GetRequiredService<IFileLoggingService>();
                 try
                 {
                     // Resolve services from the new scope.
@@ -260,16 +259,16 @@ public class GarminWebhookService : IGarminWebhookService
                 catch (Exception ex)
                 {
                     // Now we can safely log any exceptions from the background task.
-                    logger.LogError(ex, "Background challenge processing failed for activity {ActivityId}", activity.Id);
+                    await logger.LogErrorAsync("Background challenge processing failed for activity {ActivityId}", ex, "GarminWebhookService");
                 }
             });
 
-            _logger.LogInformation("Successfully processed activity {SummaryId} for user {UserId}", summaryId, userId);
+            await _logger.LogInfoAsync($"Successfully processed activity {summaryId} for user {userId}");
             return true; // Successfully processed
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing single activity from payload {PayloadId}", payloadId);
+            await _logger.LogErrorAsync("Error processing single activity from payload {PayloadId}", ex, "GarminWebhookService");
             return false; // Failed to process due to exception
         }
     }
@@ -465,7 +464,7 @@ public class GarminWebhookService : IGarminWebhookService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to reprocess payload {PayloadId}", payload.Id);
+                await _logger.LogErrorAsync("Failed to reprocess payload {PayloadId}", ex, "GarminWebhookService");
                 var errorPayload = await context.GarminWebhookPayloads.FindAsync(payload.Id);
                 if (errorPayload != null)
                 {

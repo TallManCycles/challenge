@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 
 namespace backend.Services;
 
@@ -6,13 +7,15 @@ public class FileLoggingService : IFileLoggingService
 {
     private readonly string _logDirectory;
     private readonly SemaphoreSlim _semaphore;
+    private readonly bool _isDevelopment;
 
-    public FileLoggingService()
+    public FileLoggingService(IWebHostEnvironment environment)
     {
         _logDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
         _semaphore = new SemaphoreSlim(1, 1);
+        _isDevelopment = environment.IsDevelopment();
         
-        if (!Directory.Exists(_logDirectory))
+        if (!_isDevelopment && !Directory.Exists(_logDirectory))
         {
             Directory.CreateDirectory(_logDirectory);
         }
@@ -29,22 +32,38 @@ public class FileLoggingService : IFileLoggingService
             Exception = exception?.ToString()
         };
 
-        var logText = JsonSerializer.Serialize(logEntry, new JsonSerializerOptions 
-        { 
-            WriteIndented = true 
-        });
-
-        var fileName = $"{DateTime.UtcNow:yyyy-MM-dd}.log";
-        var filePath = Path.Combine(_logDirectory, fileName);
-
-        await _semaphore.WaitAsync();
-        try
+        if (_isDevelopment)
         {
-            await File.AppendAllTextAsync(filePath, logText + Environment.NewLine + Environment.NewLine);
+            // In development, write to console
+            var consoleMessage = $"[{logEntry.Timestamp:yyyy-MM-dd HH:mm:ss}] [{logEntry.Level}] [{logEntry.Category}] {logEntry.Message}";
+            if (exception != null)
+            {
+                consoleMessage += $"{Environment.NewLine}Exception: {exception}";
+            }
+            
+            Console.WriteLine(consoleMessage);
+            await Task.CompletedTask; // Keep method async for consistency
         }
-        finally
+        else
         {
-            _semaphore.Release();
+            // In production, write to file
+            var logText = JsonSerializer.Serialize(logEntry, new JsonSerializerOptions 
+            { 
+                WriteIndented = true 
+            });
+
+            var fileName = $"{DateTime.UtcNow:yyyy-MM-dd}.log";
+            var filePath = Path.Combine(_logDirectory, fileName);
+
+            await _semaphore.WaitAsync();
+            try
+            {
+                await File.AppendAllTextAsync(filePath, logText + Environment.NewLine + Environment.NewLine);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
     }
 
