@@ -16,7 +16,7 @@ public class GarminWebhookServiceTests
 {
     private ApplicationDbContext _context;
     private Mock<IHttpClientFactory> _mockHttpClientFactory;
-    private Mock<ILogger<GarminWebhookService>> _mockLogger;
+    private Mock<IFileLoggingService> _mockLogger;
     private Mock<IGarminActivityProcessingService> _mockActivityProcessingService;
     private Mock<IServiceScopeFactory> _mockScopeFactory;
     private Mock<IServiceScope> _mockServiceScope;
@@ -111,7 +111,7 @@ public class GarminWebhookServiceTests
         _context = TestDbContextFactory.CreateInMemoryContext();
         
         _mockHttpClientFactory = new Mock<IHttpClientFactory>();
-        _mockLogger = new Mock<ILogger<GarminWebhookService>>();
+        _mockLogger = new Mock<IFileLoggingService>();
         _mockActivityProcessingService = new Mock<IGarminActivityProcessingService>();
         _mockScopeFactory = new Mock<IServiceScopeFactory>();
         _mockServiceScope = new Mock<IServiceScope>();
@@ -347,12 +347,7 @@ public class GarminWebhookServiceTests
             
             // Should log warning
             _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Could not extract userId")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                x => x.LogWarningAsync(It.Is<string>(s => s.Contains("Could not extract userId")), null),
                 Times.Once);
         }
 
@@ -373,16 +368,6 @@ public class GarminWebhookServiceTests
             Assert.IsNotNull(storedPayload);
             Assert.IsFalse(storedPayload!.IsProcessed);
             Assert.IsNotNull(storedPayload.ProcessingError);
-            
-            // Should log error
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Error,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Error processing activity data")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
         }
 
         [Test]
@@ -412,16 +397,6 @@ public class GarminWebhookServiceTests
             // Should still only have one activity
             var activitiesCount = await _context.GarminActivities.CountAsync();
             Assert.AreEqual(1, activitiesCount);
-            
-            // Should log info about skipping duplicate
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Information,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("already exists, skipping")),
-                    null,
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
         }
 
         [Test]

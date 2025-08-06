@@ -23,58 +23,34 @@ echo 3. Creating data directory for PostgreSQL...
 if not exist "data" mkdir data
 
 echo.
-echo 4. Starting PostgreSQL database...
-docker-compose -f docker/docker-compose.postgres.yml -p challenge-postgres up -d
+echo 4. Building and starting all services with Coolify configuration...
+docker-compose -f docker/docker-compose.coolify.yml up --build -d
 
 echo.
-echo 5. Waiting for PostgreSQL to initialize...
-timeout /t 10
+echo 5. Waiting for services to start...
+timeout /t 20
 
 echo.
-echo 6. Building and starting backend service...
-docker-compose -f docker/docker-compose.backend.yml -p challenge-backend up --build -d
+echo 6. Checking service status...
+docker-compose -f docker/docker-compose.coolify.yml ps
 
 echo.
-echo 7. Waiting for backend to initialize...
-timeout /t 15
-
-echo.
-echo 8. Building and starting frontend service...
-docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend up --build -d
-
-echo.
-echo 9. Waiting for frontend to start...
-timeout /t 10
-
-echo.
-echo 10. Checking service status...
-echo PostgreSQL:
-docker-compose -f docker/docker-compose.postgres.yml -p challenge-postgres ps
-echo.
-echo Backend:
-docker-compose -f docker/docker-compose.backend.yml -p challenge-backend ps
-echo.
-echo Frontend:
-docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend ps
-
-echo.
-echo 11. Full stack deployment complete! Services available at:
+echo 7. Full stack deployment complete! Services available at:
 echo    - Frontend (Vue.js): http://localhost:3000
 echo    - Backend API: http://localhost:8080
 echo    - Health Check: http://localhost:8080/api/health
 echo    - Swagger UI: http://localhost:8080/swagger
 echo    - PostgreSQL Database: localhost:5432
 echo.
-echo Database will be persisted in the './data' directory
+echo Database will be persisted in the postgres_data volume
 
 echo.
 echo Useful commands:
-echo   View PostgreSQL logs: docker-compose -f docker/docker-compose.postgres.yml -p challenge-postgres logs -f
-echo   View backend logs:    docker-compose -f docker/docker-compose.backend.yml -p challenge-backend logs -f
-echo   View frontend logs:   docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend logs -f
-echo   Stop PostgreSQL:      docker-compose -f docker/docker-compose.postgres.yml -p challenge-postgres down
-echo   Stop backend:         docker-compose -f docker/docker-compose.backend.yml -p challenge-backend down
-echo   Stop frontend:        docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend down
-echo   Stop all:             docker-compose -f docker/docker-compose.postgres.yml -p challenge-postgres down ^&^& docker-compose -f docker/docker-compose.backend.yml -p challenge-backend down ^&^& docker-compose -f docker/docker-compose.frontend.yml -p challenge-frontend down
+echo   View all logs:        docker-compose -f docker/docker-compose.coolify.yml logs -f
+echo   View backend logs:    docker-compose -f docker/docker-compose.coolify.yml logs -f backend
+echo   View frontend logs:   docker-compose -f docker/docker-compose.coolify.yml logs -f frontend
+echo   View postgres logs:   docker-compose -f docker/docker-compose.coolify.yml logs -f postgres
+echo   Stop all services:    docker-compose -f docker/docker-compose.coolify.yml down
+echo   Stop with volumes:    docker-compose -f docker/docker-compose.coolify.yml down -v
 echo.
 pause

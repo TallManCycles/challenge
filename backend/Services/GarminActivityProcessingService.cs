@@ -15,12 +15,12 @@ public interface IGarminActivityProcessingService
 public class GarminActivityProcessingService : IGarminActivityProcessingService
 {
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<GarminActivityProcessingService> _logger;
+    private readonly IFileLoggingService _logger;
     private readonly IChallengeNotificationService _notificationService;
 
     public GarminActivityProcessingService(
         ApplicationDbContext context,
-        ILogger<GarminActivityProcessingService> logger,
+        IFileLoggingService logger,
         IChallengeNotificationService notificationService)
     {
         _context = context;
@@ -37,7 +37,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
 
             if (activity == null)
             {
-                _logger.LogWarning("Activity {ActivityId} not found for challenge processing", activityId);
+                await _logger.LogWarningAsync($"Activity {activityId} not found for challenge processing");
                 return;
             }
 
@@ -61,7 +61,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
             activity.ProcessedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Successfully processed activity {ActivityId} for challenges", activityId);
+            await _logger.LogInfoAsync($"Successfully processed activity {activityId} for challenges");
         }
         catch (Exception ex)
         {
@@ -72,7 +72,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
                 await _context.SaveChangesAsync();
             }
 
-            _logger.LogError(ex, "Error processing activity {ActivityId} for challenges", activityId);
+            await _logger.LogErrorAsync("Error processing activity {ActivityId} for challenges", ex, "GarminActivityProcessingService");
         }
     }
 
@@ -111,8 +111,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
                 participation.CurrentTotal += (decimal)activityValue;
                 participation.LastActivityDate = activity.StartTime;
                 
-                _logger.LogInformation("Updated challenge {ChallengeId} for user {UserId}: added {Value} {Type}", 
-                    challenge.Id, activity.UserId, activityValue, challenge.ChallengeType);
+                await _logger.LogInfoAsync($"Updated challenge {challenge.Id} for user {activity.UserId}: added {activityValue} {challenge.ChallengeType}");
                 
                 // Insert the activity into the Activities table if it doesn't already exist
                 var existingActivity = await _context.Activities
@@ -135,8 +134,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
                     _context.Activities.Add(newActivity);
                     await _context.SaveChangesAsync();
                     
-                    _logger.LogInformation("Added activity {ActivityId} to Activities table for user {UserId}", 
-                        newActivity.GarminActivityId, activity.UserId);
+                    await _logger.LogInfoAsync($"Added activity {newActivity.GarminActivityId} to Activities table for user {activity.UserId}");
                     
                     // Send email notifications to other challenge participants
                     try
@@ -145,15 +143,14 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
                     }
                     catch (Exception notificationEx)
                     {
-                        _logger.LogError(notificationEx, "Failed to send notifications for activity {ActivityId}", newActivity.Id);
+                        await _logger.LogErrorAsync($"Failed to send notifications for activity {newActivity.Id}",notificationEx);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing activity {ActivityId} for challenge {ChallengeId}", 
-                activity.Id, participation.ChallengeId);
+            await _logger.LogErrorAsync("Error processing activity {ActivityId} for challenge {ChallengeId}", ex, "GarminActivityProcessingService");
         }
     }
 

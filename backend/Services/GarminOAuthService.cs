@@ -21,13 +21,13 @@ public class GarminOAuthService : IGarminOAuthService
     private readonly ApplicationDbContext _context;
     private readonly GarminOAuthConfig _config;
     private readonly IHttpClientFactory _httpClientFactory;
-    private readonly ILogger<GarminOAuthService> _logger;
+    private readonly IFileLoggingService _logger;
 
     public GarminOAuthService(
         ApplicationDbContext context,
         IOptions<GarminOAuthConfig> config,
         IHttpClientFactory httpClientFactory,
-        ILogger<GarminOAuthService> logger)
+        IFileLoggingService logger)
     {
         _context = context;
         _config = config.Value;
@@ -64,12 +64,12 @@ public class GarminOAuthService : IGarminOAuthService
             // Build authorization URL
             string authUrl = $"{_config.AuthorizeUrl}?oauth_token={requestToken}&state={state}";
 
-            _logger.LogInformation("OAuth initiation successful for user {UserId}", userId);
+            await _logger.LogInfoAsync($"OAuth initiation successful for user {userId}");
             return (authUrl, state);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to initiate OAuth for user {UserId}", userId);
+            await _logger.LogErrorAsync("Failed to initiate OAuth for user {UserId}", ex, "GarminOAuthService");
             throw;
         }
     }
@@ -88,7 +88,7 @@ public class GarminOAuthService : IGarminOAuthService
 
             if (tokenRecord == null)
             {
-                _logger.LogWarning("Invalid or expired OAuth callback with state {State}", state);
+                await _logger.LogWarningAsync($"Invalid or expired OAuth callback with state {state}");
                 return false;
             }
 
@@ -112,12 +112,12 @@ public class GarminOAuthService : IGarminOAuthService
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("OAuth callback processed successfully for user {UserId}", tokenRecord.UserId);
+            await _logger.LogInfoAsync($"OAuth callback processed successfully for user {tokenRecord.UserId}");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to handle OAuth callback");
+            await _logger.LogErrorAsync("Failed to handle OAuth callback", ex, "GarminOAuthService");
             return false;
         }
     }
@@ -157,12 +157,12 @@ public class GarminOAuthService : IGarminOAuthService
 
             await _context.SaveChangesAsync();
             
-            _logger.LogInformation("Garmin disconnected successfully for user {UserId}", userId);
+            await _logger.LogInfoAsync($"Garmin disconnected successfully for user {userId}");
             return true;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to disconnect Garmin for user {UserId}", userId);
+            await _logger.LogErrorAsync("Failed to disconnect Garmin for user {UserId}", ex, "GarminOAuthService");
             return false;
         }
     }

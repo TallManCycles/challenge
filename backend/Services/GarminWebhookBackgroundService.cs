@@ -7,17 +7,14 @@ namespace backend.Services;
 public class GarminWebhookBackgroundService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<GarminWebhookBackgroundService> _logger;
-    private readonly IServiceScopeFactory _seviceScopeFactory;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public GarminWebhookBackgroundService(
         IServiceProvider serviceProvider,
-        ILogger<GarminWebhookBackgroundService> logger,
         IServiceScopeFactory serviceScopeFactory)
     {
         _serviceProvider = serviceProvider;
-        _logger = logger;
-        _seviceScopeFactory = serviceScopeFactory;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -26,17 +23,21 @@ public class GarminWebhookBackgroundService : BackgroundService
         {
             try
             {
-                using (var scope = _seviceScopeFactory.CreateScope())
+                using (var scope = _serviceScopeFactory.CreateScope())
                 {
-                    //using var scope = _serviceProvider.CreateScope();
                     var webhookService = scope.ServiceProvider.GetRequiredService<IGarminWebhookService>();
+                    var logger = scope.ServiceProvider.GetRequiredService<IFileLoggingService>();
                 
                     await webhookService.ProcessStoredPayloadsAsync();
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in Garmin webhook background processing");
+                using (var scope = _serviceScopeFactory.CreateScope())
+                {
+                    var logger = scope.ServiceProvider.GetRequiredService<IFileLoggingService>();
+                    await logger.LogErrorAsync("Error in Garmin webhook background processing", ex, "GarminWebhookBackgroundService");
+                }
             }
 
             // Wait 5 minutes before next processing

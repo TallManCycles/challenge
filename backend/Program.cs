@@ -61,8 +61,12 @@ builder.Services.AddScoped<IGarminOAuthService, GarminOAuthService>();
 builder.Services.AddScoped<IGarminWebhookService, GarminWebhookService>();
 builder.Services.AddScoped<IGarminActivityProcessingService, GarminActivityProcessingService>();
 
-// Add background service for retry processing
+// Add Garmin daily activity fetch service
+builder.Services.AddScoped<IGarminDailyActivityFetchService, GarminDailyActivityFetchService>();
+
+// Add background services
 builder.Services.AddHostedService<GarminWebhookBackgroundService>();
+builder.Services.AddHostedService<GarminDailyActivityBackgroundService>();
 
 // Add Controllers
 builder.Services.AddControllers();
@@ -125,31 +129,31 @@ try
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var logger = scope.ServiceProvider.GetRequiredService<IFileLoggingService>();
     
-    logger.LogInformation("Initializing PostgreSQL database...");
+    await logger.LogInfoAsync("Initializing PostgreSQL database...");
     
     var connectionString = app.Configuration.GetConnectionString("DefaultConnection");
-    logger.LogInformation("Connection string: {ConnectionString}", connectionString);
+    await logger.LogInfoAsync($"Connection string: {connectionString}");
     
     // Apply any pending migrations
-    logger.LogInformation("Applying database migrations...");
+    await logger.LogInfoAsync("Applying database migrations...");
     await context.Database.MigrateAsync();
     
-    logger.LogInformation("Database migration completed successfully.");
+    await logger.LogInfoAsync("Database migration completed successfully.");
     
     // Seed only in development
     if (app.Environment.IsDevelopment())
     {
         var seeder = new DatabaseSeeder(context);
         await seeder.SeedAsync();
-        logger.LogInformation("Database seeding completed.");
+        await logger.LogInfoAsync("Database seeding completed.");
     }
 }
 catch (Exception ex)
 {
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogError(ex, "An error occurred while initializing the database. Application will continue but may not function correctly.");
+    var logger = app.Services.GetRequiredService<IFileLoggingService>();
+    await logger.LogErrorAsync("An error occurred while initializing the database. Application will continue but may not function correctly.", ex, "Program");
 }
 
 // Configure the HTTP request pipeline.

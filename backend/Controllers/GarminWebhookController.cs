@@ -26,7 +26,7 @@ public class GarminWebhookController : ControllerBase
             using var reader = new StreamReader(Request.Body);
             string payload = await reader.ReadToEndAsync();
 
-            await _logger.LogInfoAsync("Received ping webhook for type {WebhookType}", webhookType);
+            await _logger.LogInfoAsync($"Received ping webhook for type {webhookType}");
 
             // Immediately return 200 OK as required by Garmin
             var processingTask = _webhookService.ProcessPingNotificationAsync(webhookType, payload);
@@ -61,7 +61,7 @@ public class GarminWebhookController : ControllerBase
             using var reader = new StreamReader(Request.Body);
             string payload = await reader.ReadToEndAsync();
 
-            await _logger.LogInfoAsync("Received push webhook for type {WebhookType}", webhookType);
+            await _logger.LogInfoAsync($"Received push webhook for type {webhookType}");
 
             // Immediately return 200 OK as required by Garmin
             var processingTask = _webhookService.ProcessPushNotificationAsync(webhookType, payload);

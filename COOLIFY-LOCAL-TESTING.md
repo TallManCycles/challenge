@@ -2,36 +2,22 @@
 
 This guide explains how to test your Coolify docker-compose configuration locally before deploying to Coolify.
 
-## Quick Test Method
-
-### Option 1: Use the Test Script (Recommended)
+## Manual Testing
 ```bash
-.\test-coolify-local.bat
-```
+# 1. Copy test environment if needed
+# copy your environment variables file to .env if needed
 
-This script will:
-1. Check Docker is running
-2. Copy test environment variables
-3. Deploy the full stack with PostgreSQL
-4. Test all endpoints
-5. Display service status and URLs
-
-### Option 2: Manual Testing
-```bash
-# 1. Copy test environment
-copy docker\.env.coolify-test .env
-
-# 2. Deploy with Coolify test compose
-docker-compose -f docker/docker-compose.coolify-test.yml up --build -d
+# 2. Deploy with Coolify compose
+docker-compose -f docker/docker-compose.coolify.yml up --build -d
 
 # 3. Check status
-docker-compose -f docker/docker-compose.coolify-test.yml ps
+docker-compose -f docker/docker-compose.coolify.yml ps
 
 # 4. View logs
-docker-compose -f docker/docker-compose.coolify-test.yml logs -f
+docker-compose -f docker/docker-compose.coolify.yml logs -f
 
 # 5. Stop when done
-docker-compose -f docker/docker-compose.coolify-test.yml down
+docker-compose -f docker/docker-compose.coolify.yml down
 ```
 
 ## What Gets Tested
@@ -57,20 +43,12 @@ docker-compose -f docker/docker-compose.coolify-test.yml down
 
 ## Test Files
 
-### `docker/docker-compose.coolify-test.yml`
-- Full Coolify compose with all services uncommented
+### `docker/docker-compose.coolify.yml`
+- Full Coolify compose with all services
 - Uses same structure as production Coolify deployment
 - Includes PostgreSQL, backend, and frontend
 
-### `docker/.env.coolify-test`
-- Test environment variables
-- Uses container names for service communication
-- Safe test credentials (don't use in production)
 
-### `test-coolify-local.bat`
-- Automated test script
-- Tests all endpoints
-- Shows service status
 
 ## Differences from Production Coolify
 
@@ -96,33 +74,33 @@ docker-compose -f docker/docker-compose.coolify-test.yml down
 2. **Service Not Starting**:
    ```bash
    # Check specific service logs
-   docker-compose -f docker/docker-compose.coolify-test.yml logs backend
-   docker-compose -f docker/docker-compose.coolify-test.yml logs postgres
+   docker-compose -f docker/docker-compose.coolify.yml logs backend
+   docker-compose -f docker/docker-compose.coolify.yml logs postgres
    ```
 
 3. **Database Connection Issues**:
    ```bash
    # Test database connection
-   docker-compose -f docker/docker-compose.coolify-test.yml exec backend curl http://localhost:8080/api/health
+   docker-compose -f docker/docker-compose.coolify.yml exec backend curl http://localhost:8080/api/health
    ```
 
 4. **Frontend Not Loading**:
    ```bash
    # Check frontend logs
-   docker-compose -f docker/docker-compose.coolify-test.yml logs frontend
+   docker-compose -f docker/docker-compose.coolify.yml logs frontend
    ```
 
 ### Cleanup Commands:
 
 ```bash
 # Stop all services
-docker-compose -f docker/docker-compose.coolify-test.yml down
+docker-compose -f docker/docker-compose.coolify.yml down
 
 # Stop and remove volumes (deletes database data)
-docker-compose -f docker/docker-compose.coolify-test.yml down -v
+docker-compose -f docker/docker-compose.coolify.yml down -v
 
 # Remove all containers and images
-docker-compose -f docker/docker-compose.coolify-test.yml down --rmi all -v
+docker-compose -f docker/docker-compose.coolify.yml down --rmi all -v
 
 # Clean up test environment file
 del .env
