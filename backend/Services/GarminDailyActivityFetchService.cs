@@ -116,8 +116,10 @@ public class GarminDailyActivityFetchService : IGarminDailyActivityFetchService
                 var dayStart = now.Date.AddDays(-dayOffset);
                 var dayEnd = dayStart.AddDays(1);
                 
-                var uploadStartTimeInSeconds = ((DateTimeOffset)dayStart).ToUnixTimeSeconds();
-                var uploadEndTimeInSeconds = ((DateTimeOffset)dayEnd).ToUnixTimeSeconds();
+                // Explicitly specify UTC time zone (TimeSpan.Zero) to ensure consistent time handling
+                // This prevents issues with server local time zone affecting the Unix timestamp calculation
+                var uploadStartTimeInSeconds = new DateTimeOffset(dayStart, TimeSpan.Zero).ToUnixTimeSeconds();
+                var uploadEndTimeInSeconds = new DateTimeOffset(dayEnd, TimeSpan.Zero).ToUnixTimeSeconds();
 
                 await _logger.LogInfoAsync($"Fetching activities for user {userId} for day {dayOffset} ago ({dayStart} to {dayEnd})");
 

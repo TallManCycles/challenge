@@ -16,13 +16,16 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
 {
     private readonly ApplicationDbContext _context;
     private readonly IFileLoggingService _logger;
+    private readonly IChallengeNotificationService _notificationService;
 
     public GarminActivityProcessingService(
         ApplicationDbContext context,
-        IFileLoggingService logger)
+        IFileLoggingService logger,
+        IChallengeNotificationService notificationService)
     {
         _context = context;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task ProcessActivityForChallengesAsync(int activityId)
@@ -132,6 +135,16 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
                     await _context.SaveChangesAsync();
                     
                     await _logger.LogInfoAsync($"Added activity {newActivity.GarminActivityId} to Activities table for user {activity.UserId}");
+                    
+                    // Send email notifications to other challenge participants
+                    try
+                    {
+                        await _notificationService.SendActivityNotificationsForAllChallengesAsync(newActivity.Id);
+                    }
+                    catch (Exception notificationEx)
+                    {
+                        await _logger.LogErrorAsync($"Failed to send notifications for activity {newActivity.Id}",notificationEx);
+                    }
                 }
             }
         }

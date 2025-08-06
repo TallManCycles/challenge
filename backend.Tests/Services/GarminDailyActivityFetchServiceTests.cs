@@ -1,8 +1,10 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using Xunit;
+using NUnit.Framework;
+using backend.Data;
 using backend.Models;
 using backend.Services;
 
@@ -12,7 +14,7 @@ public class GarminDailyActivityFetchServiceTests
 {
     private readonly Mock<IServiceScopeFactory> _mockScopeFactory;
     private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
-    private readonly Mock<ILogger<GarminDailyActivityFetchService>> _mockLogger;
+    private readonly Mock<IFileLoggingService> _mockLogger;
     private readonly Mock<IGarminActivityProcessingService> _mockActivityProcessingService;
     private readonly Mock<IOptions<GarminOAuthConfig>> _mockConfig;
     private readonly GarminDailyActivityFetchService _service;
@@ -21,7 +23,7 @@ public class GarminDailyActivityFetchServiceTests
     {
         _mockScopeFactory = new Mock<IServiceScopeFactory>();
         _mockHttpClientFactory = new Mock<IHttpClientFactory>();
-        _mockLogger = new Mock<ILogger<GarminDailyActivityFetchService>>();
+        _mockLogger = new Mock<IFileLoggingService>();
         _mockActivityProcessingService = new Mock<IGarminActivityProcessingService>();
         _mockConfig = new Mock<IOptions<GarminOAuthConfig>>();
 
@@ -41,23 +43,24 @@ public class GarminDailyActivityFetchServiceTests
             _mockConfig.Object);
     }
 
-    [Fact]
+    [Test]
     public void Service_Should_Be_Created_Successfully()
     {
         // Test that the service can be instantiated without errors
-        Assert.NotNull(_service);
+        Assert.That(_service, Is.Not.Null);
     }
 
-    [Fact]
+    [Test]
     public async Task FetchActivitiesForAllUsersAsync_Should_Complete_Without_Exception()
     {
         // Arrange
         var mockScope = new Mock<IServiceScope>();
         var mockServiceProvider = new Mock<IServiceProvider>();
-        var mockContext = TestHelper.GetInMemoryDbContext();
+        var mockContext = GetInMemoryDbContext();
 
         mockScope.Setup(x => x.ServiceProvider).Returns(mockServiceProvider.Object);
-        mockServiceProvider.Setup(x => x.GetRequiredService<Data.ApplicationDbContext>()).Returns(mockContext);
+        mockServiceProvider.Setup(x => x.GetService(typeof(ApplicationDbContext))).Returns(mockContext);
+        mockServiceProvider.Setup(x => x.GetService(typeof(IFileLoggingService))).Returns(_mockLogger.Object);
         _mockScopeFactory.Setup(x => x.CreateScope()).Returns(mockScope.Object);
 
         // Act & Assert - Should not throw
@@ -65,26 +68,22 @@ public class GarminDailyActivityFetchServiceTests
         
         // Verify that logging occurred
         _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Starting daily activity fetch for all users")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            x => x.LogInfoAsync(It.Is<string>(s => s == "Starting daily activity fetch for all users"), null),
             Times.Once);
     }
 
-    [Fact]
+    [Test]
     public async Task FetchActivitiesForUserAsync_Should_Handle_Missing_Token_Gracefully()
     {
         // Arrange
         const int userId = 123;
         var mockScope = new Mock<IServiceScope>();
         var mockServiceProvider = new Mock<IServiceProvider>();
-        var mockContext = TestHelper.GetInMemoryDbContext();
+        var mockContext = GetInMemoryDbContext();
 
         mockScope.Setup(x => x.ServiceProvider).Returns(mockServiceProvider.Object);
-        mockServiceProvider.Setup(x => x.GetRequiredService<Data.ApplicationDbContext>()).Returns(mockContext);
+        mockServiceProvider.Setup(x => x.GetService(typeof(ApplicationDbContext))).Returns(mockContext);
+        mockServiceProvider.Setup(x => x.GetService(typeof(IFileLoggingService))).Returns(_mockLogger.Object);
         _mockScopeFactory.Setup(x => x.CreateScope()).Returns(mockScope.Object);
 
         // Act - Should not throw
@@ -92,12 +91,16 @@ public class GarminDailyActivityFetchServiceTests
         
         // Assert - Should log warning about missing token
         _mockLogger.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("No valid OAuth token found for user")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            x => x.LogWarningAsync(It.Is<string>(s => s.Contains("No valid OAuth token found for user")), null),
             Times.Once);
+    }
+
+    private static ApplicationDbContext GetInMemoryDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        return new ApplicationDbContext(options);
     }
 }

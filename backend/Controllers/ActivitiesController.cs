@@ -24,8 +24,11 @@ public class ActivitiesController : ControllerBase
 
     private int GetCurrentUserId()
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        return int.Parse(userIdClaim!);
+        if (int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+        {
+            return userId;
+        }
+        throw new InvalidOperationException("User ID is missing or invalid in the token.");
     }
 
     [HttpPost("{activityId}/like")]

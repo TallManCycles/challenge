@@ -241,7 +241,8 @@ public class AuthController : ControllerBase
             username = user.Username,
             fullName = user.FullName,
             createdAt = user.CreatedAt,
-            garminConnected = !string.IsNullOrEmpty(user.GarminUserId)
+            garminConnected = !string.IsNullOrEmpty(user.GarminUserId),
+            emailNotificationsEnabled = user.EmailNotificationsEnabled
         });
     }
 
@@ -268,6 +269,10 @@ public class AuthController : ControllerBase
         // Update user profile
         user.Email = request.Email;
         user.FullName = request.FullName;
+        if (request.EmailNotificationsEnabled.HasValue)
+        {
+            user.EmailNotificationsEnabled = request.EmailNotificationsEnabled.Value;
+        }
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -278,6 +283,7 @@ public class AuthController : ControllerBase
             email = user.Email,
             username = user.Username,
             fullName = user.FullName,
+            emailNotificationsEnabled = user.EmailNotificationsEnabled,
             message = "Profile updated successfully"
         });
     }

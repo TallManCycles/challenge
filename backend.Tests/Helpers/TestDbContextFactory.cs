@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Hosting;
+using Moq;
 using backend.Data;
 using backend.Services;
+using Microsoft.Extensions.Hosting;
 
 namespace backend.Tests.Helpers;
 
@@ -38,6 +41,8 @@ public static class TestDbContextFactory
 
     public static IFileLoggingService CreateTestLogger()
     {
-        return new FileLoggingService();
+        var mockEnvironment = new Mock<IWebHostEnvironment>();
+        mockEnvironment.SetupGet(env => env.EnvironmentName).Returns("Production");
+        return new FileLoggingService(mockEnvironment.Object);
     }
 }

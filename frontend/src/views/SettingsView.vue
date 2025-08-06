@@ -192,6 +192,35 @@
           </div>
         </section>
 
+        <!-- Notification Preferences Section -->
+        <section class="bg-gray-800 rounded-lg p-6">
+          <div class="flex items-center mb-6">
+            <div class="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center mr-3">
+              <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white">Notification Preferences</h3>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 bg-gray-700 rounded-lg">
+              <div>
+                <h4 class="text-white font-medium">Email Notifications</h4>
+                <p class="text-gray-400 text-sm">Receive email notifications when other participants upload activities to challenges you're part of</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  v-model="profileForm.emailNotificationsEnabled"
+                  class="sr-only peer"
+                >
+                <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              </label>
+            </div>
+          </div>
+        </section>
+
         <div class="flex items-center justify-between">
           <div class="flex space-x-3">
             <button
@@ -339,7 +368,8 @@ const authStore = useAuthStore()
 // Form data
 const profileForm = ref({
   fullName: '',
-  email: ''
+  email: '',
+  emailNotificationsEnabled: true
 })
 
 const passwordForm = ref({
@@ -364,6 +394,7 @@ onMounted(async () => {
     const user = await authService.getCurrentUser()
     profileForm.value.email = user.email
     profileForm.value.fullName = user.fullName || ''
+    profileForm.value.emailNotificationsEnabled = user.emailNotificationsEnabled
   } catch {
     showToastMessage('Failed to load user data', 'error')
   }
@@ -469,6 +500,7 @@ const cancelChanges = async () => {
     const user = await authService.getCurrentUser()
     profileForm.value.email = user.email
     profileForm.value.fullName = user.fullName || ''
+    profileForm.value.emailNotificationsEnabled = user.emailNotificationsEnabled
     passwordForm.value.currentPassword = ''
     passwordForm.value.newPassword = ''
     showToastMessage('Changes cancelled', 'info')
@@ -486,7 +518,8 @@ const handleSubmit = async () => {
     // Update profile information
     await authService.updateProfile({
       email: profileForm.value.email,
-      fullName: profileForm.value.fullName || undefined
+      fullName: profileForm.value.fullName || undefined,
+      emailNotificationsEnabled: profileForm.value.emailNotificationsEnabled
     })
 
     // Handle password change if provided

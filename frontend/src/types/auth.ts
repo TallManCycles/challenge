@@ -26,6 +26,7 @@ export interface User {
   fullName?: string
   createdAt?: string
   garminConnected: boolean
+  emailNotificationsEnabled: boolean
 }
 
 export interface ChangePasswordRequest {
@@ -47,4 +48,5 @@ export interface ResetPasswordRequest {
 export interface UpdateProfileRequest {
   email: string
   fullName?: string
+  emailNotificationsEnabled?: boolean
 }

@@ -38,5 +38,7 @@ public class User
     
     public ICollection<ChallengeParticipant> ChallengeParticipations { get; set; } = new List<ChallengeParticipant>();
     
+    public bool EmailNotificationsEnabled { get; set; } = true;
+
     public ICollection<Activity> Activities { get; set; } = new List<Activity>();
 }

@@ -1,6 +1,9 @@
 using NUnit.Framework;
 using backend.Services;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Moq;
 
 namespace backend.Tests;
 
@@ -13,7 +16,10 @@ public class FileLoggingServiceTests
     [SetUp]
     public void Setup()
     {
-        _loggingService = new FileLoggingService();
+        var mockEnvironment = new Mock<IWebHostEnvironment>();
+        mockEnvironment.SetupGet(env => env.EnvironmentName).Returns("Production");
+        
+        _loggingService = new FileLoggingService(mockEnvironment.Object);
         _testLogDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
     }
 

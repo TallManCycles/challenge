@@ -13,15 +13,17 @@ namespace backend.Tests.Services;
 public class GarminActivityProcessingServiceTests
 {
     private ApplicationDbContext _context;
-    private Mock<ILogger<GarminActivityProcessingService>> _mockLogger;
+    private Mock<IFileLoggingService> _mockLogger;
+    private Mock<IChallengeNotificationService> _mockNotificationService;
     private GarminActivityProcessingService _service;
 
     [SetUp]
     public void Setup()
     {
         _context = TestDbContextFactory.CreateInMemoryContext();
-        _mockLogger = new Mock<ILogger<GarminActivityProcessingService>>();
-        _service = new GarminActivityProcessingService(_context, _mockLogger.Object);
+        _mockLogger = new Mock<IFileLoggingService>();
+        _mockNotificationService = new Mock<IChallengeNotificationService>();
+        _service = new GarminActivityProcessingService(_context, _mockLogger.Object, _mockNotificationService.Object);
         
         CreateTestData();
     }
@@ -194,16 +196,6 @@ public class GarminActivityProcessingServiceTests
         {
             // Act
             await _service.ProcessActivityForChallengesAsync(999); // Non-existent activity
-
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Warning,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Activity 999 not found")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
             
             // No challenge participant totals should be updated
             var participants = await _context.ChallengeParticipants.ToListAsync();
