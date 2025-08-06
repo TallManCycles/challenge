@@ -57,7 +57,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (Exception ex)
         {
-            await _logger.LogErrorAsync("Failed to process ping notification for type {WebhookType}", ex, "GarminWebhookService");
+            await _logger.LogErrorAsync($"Failed to process ping notification for type { webhookType }", ex, "GarminWebhookService");
             return false;
         }
     }
@@ -87,7 +87,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (Exception ex)
         {
-            await _logger.LogErrorAsync("Failed to process push notification for type {WebhookType}", ex, "GarminWebhookService");
+            await _logger.LogErrorAsync($"Failed to process push notification for type {webhookType}", ex, "GarminWebhookService");
             return false;
         }
     }
@@ -121,7 +121,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (JsonException ex)
         {
-            await _logger.LogErrorAsync("Invalid JSON in ping payload {PayloadId}", ex, "GarminWebhookService");
+            await _logger.LogErrorAsync($"Invalid JSON in ping payload {payloadId}", ex, "GarminWebhookService");
             var context = serviceProvider.GetRequiredService<ApplicationDbContext>();
             var webhookPayload = await context.GarminWebhookPayloads.FindAsync(payloadId);
             if (webhookPayload != null)
@@ -151,7 +151,7 @@ public class GarminWebhookService : IGarminWebhookService
         }
         catch (Exception ex)
         {
-            await _logger.LogErrorAsync("Error fetching activity data from callback URL: {CallbackUrl}", ex, "GarminWebhookService");
+            await _logger.LogErrorAsync($"Error fetching activity data from callback URL: {callbackUrl}", ex, "GarminWebhookService");
         }
     }
 
