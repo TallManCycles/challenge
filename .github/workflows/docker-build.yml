@@ -1,0 +1,241 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [ master ]
+    tags: [ 'v*.*.*' ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  REGISTRY: ghcr.io
+  BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
+  FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+      version: ${{ steps.meta.outputs.version }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+          tags: |
+            # set version 1.0 as default for master branch (instead of latest)
+            type=raw,value=1.0,enable={{is_default_branch}}
+            # use git short commit for master branch
+            type=sha,prefix={{branch}}-,enable={{is_default_branch}}
+            # set version tag for git tags (v1.0.0 -> 1.0.0)
+            type=ref,event=tag,prefix=
+            # remove 'v' prefix from version tags
+            type=ref,event=tag,prefix=,suffix=,pattern=v{{version}}
+            # set branch name for feature branches
+            type=ref,event=branch
+            # set pr number for pull requests
+            type=ref,event=pr
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image
+        id: image
+        run: echo "image=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+      version: ${{ steps.meta.outputs.version }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+          tags: |
+            # set version 1.0 as default for master branch (instead of latest)
+            type=raw,value=1.0,enable={{is_default_branch}}
+            # use git short commit for master branch
+            type=sha,prefix={{branch}}-,enable={{is_default_branch}}
+            # set version tag for git tags (v1.0.0 -> 1.0.0)
+            type=ref,event=tag,prefix=
+            # remove 'v' prefix from version tags
+            type=ref,event=tag,prefix=,suffix=,pattern=v{{version}}
+            # set branch name for feature branches
+            type=ref,event=branch
+            # set pr number for pull requests
+            type=ref,event=pr
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VITE_APP_API_ENDPOINT=${{ vars.VITE_APP_API_ENDPOINT || 'http://localhost:8080' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image
+        id: image
+        run: echo "image=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+
+  update-deployment:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update docker-compose with new images
+        run: |
+          # Extract backend and frontend versions from the metadata
+          BACKEND_VERSION=$(echo "${{ needs.build-backend.outputs.version }}" | head -1)
+          FRONTEND_VERSION=$(echo "${{ needs.build-frontend.outputs.version }}" | head -1)
+          
+          # Update backend image version in docker-compose.coolify.yml (replace the default fallback version)
+          sed -i "s|ghcr.io/tallmancycles/challenge/backend:[0-9.]*}|ghcr.io/tallmancycles/challenge/backend:${BACKEND_VERSION}}|g" docker/docker-compose.coolify.yml
+          
+          # Update frontend image version in docker-compose.coolify.yml (replace the default fallback version)
+          sed -i "s|ghcr.io/tallmancycles/challenge/frontend:[0-9.]*}|ghcr.io/tallmancycles/challenge/frontend:${FRONTEND_VERSION}}|g" docker/docker-compose.coolify.yml
+          
+          # Also update .env.example with the new default versions
+          sed -i "s|ghcr.io/tallmancycles/challenge/backend:[0-9.]*|ghcr.io/tallmancycles/challenge/backend:${BACKEND_VERSION}|g" docker/.env.example
+          sed -i "s|ghcr.io/tallmancycles/challenge/frontend:[0-9.]*|ghcr.io/tallmancycles/challenge/frontend:${FRONTEND_VERSION}|g" docker/.env.example
+
+      - name: Create deployment info file
+        run: |
+          cat > DOCKER_IMAGES.md << EOF
+          # Docker Image Versions
+          
+          Generated on: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          Commit: ${{ github.sha }}
+          
+          ## Current Images
+          
+          - **Backend**: \`${{ needs.build-backend.outputs.image }}\`
+          - **Frontend**: \`${{ needs.build-frontend.outputs.image }}\`
+          
+          ## Usage
+          
+          These images are automatically built and pushed to GitHub Container Registry.
+          The docker-compose.coolify.yml file has been updated to use these images.
+          
+          To use a specific version:
+          \`\`\`yaml
+          services:
+            backend:
+              image: ${{ needs.build-backend.outputs.image }}
+            frontend:
+              image: ${{ needs.build-frontend.outputs.image }}
+          \`\`\`
+          
+          ## Available Tags
+          
+          - \`latest\` - Latest stable version from master branch
+          - \`master-<commit>\` - Specific commit from master branch  
+          - \`v*.*.*\` - Tagged releases
+          EOF
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add docker/docker-compose.coolify.yml DOCKER_IMAGES.md
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update Docker images to ${{ github.sha }}"
+            git push
+          fi
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-frontend]
+    if: github.event_name != 'pull_request'
+    permissions:
+      security-events: write
+    
+    strategy:
+      matrix:
+        image: 
+          - ${{ needs.build-backend.outputs.image }}
+          - ${{ needs.build-frontend.outputs.image }}
+    
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ matrix.image }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
