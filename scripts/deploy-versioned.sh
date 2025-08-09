@@ -76,14 +76,20 @@ update_env_file() {
     cp "$ENV_FILE" "$ENV_FILE.backup"
     
     # Update or add image environment variables
+    # Use a temporary file for cross-platform compatibility (macOS/BSD requires backup extension for sed -i)
+    TEMP_FILE=$(mktemp)
+    
     if grep -q "^BACKEND_IMAGE=" "$ENV_FILE"; then
-        sed -i "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=$backend_image|" "$ENV_FILE"
+        sed "s|^BACKEND_IMAGE=.*|BACKEND_IMAGE=$backend_image|" "$ENV_FILE" > "$TEMP_FILE"
+        mv "$TEMP_FILE" "$ENV_FILE"
     else
         echo "BACKEND_IMAGE=$backend_image" >> "$ENV_FILE"
     fi
     
     if grep -q "^FRONTEND_IMAGE=" "$ENV_FILE"; then
-        sed -i "s|^FRONTEND_IMAGE=.*|FRONTEND_IMAGE=$frontend_image|" "$ENV_FILE"
+        TEMP_FILE=$(mktemp)
+        sed "s|^FRONTEND_IMAGE=.*|FRONTEND_IMAGE=$frontend_image|" "$ENV_FILE" > "$TEMP_FILE"
+        mv "$TEMP_FILE" "$ENV_FILE"
     else
         echo "FRONTEND_IMAGE=$frontend_image" >> "$ENV_FILE"
     fi
@@ -98,7 +104,7 @@ pull_images() {
     
     docker pull "ghcr.io/$REPO_NAME/backend:$version" || {
         echo "❌ Failed to pull backend image. Make sure the image exists and you're authenticated."
-        echo "Run: echo \$GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin"
+        echo "Run: echo \$GITHUB_TOKEN | docker login ghcr.io -u your-username --password-stdin"
         exit 1
     }
     

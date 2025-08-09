@@ -23,7 +23,7 @@ if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
 fi
 
 # Check if tag already exists
-if git tag --list | grep -q "^v$VERSION$"; then
+if git tag --list | grep -q "^v${VERSION}$"; then
     echo "❌ Tag v$VERSION already exists"
     exit 1
 fi
@@ -41,7 +41,7 @@ git push origin "v$VERSION"
 
 echo "✅ Tag v$VERSION pushed to GitHub"
 echo "📦 GitHub Actions will now build and push Docker images for version $VERSION"
-echo "🔗 Check the build status at: https://github.com/$(git config --get remote.origin.url | sed 's/.*://; s/.git$//')/actions"
+echo "🔗 Check the build status at: https://github.com/$(git config --get remote.origin.url | sed -e 's/.*github.com[:/]//' -e 's/\.git$//')/actions"
 
 echo
 echo "📋 Once the build completes, you can deploy with:"

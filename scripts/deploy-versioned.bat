@@ -189,7 +189,7 @@ echo 🔄 Pulling Docker images for version: %VERSION%
 docker pull "%BACKEND_IMAGE%"
 if errorlevel 1 (
     echo ❌ Failed to pull backend image. Make sure the image exists and you're authenticated.
-    echo Run: echo %%GITHUB_TOKEN%% ^| docker login ghcr.io -u USERNAME --password-stdin
+    echo Run: echo %%GITHUB_TOKEN%% ^| docker login ghcr.io -u your-username --password-stdin
     exit /b 1
 )
 

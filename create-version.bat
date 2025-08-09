@@ -23,7 +23,7 @@ if errorlevel 1 (
 )
 
 :: Check if tag already exists
-git tag --list | findstr /c:"v%VERSION%" >nul
+git tag --list | findstr /r "^v%VERSION%$" >nul
 if not errorlevel 1 (
     echo ❌ Tag v%VERSION% already exists
     exit /b 1
@@ -55,7 +55,17 @@ echo 📦 GitHub Actions will now build and push Docker images for version %VERS
 
 :: Get repository URL for actions link
 for /f "tokens=*" %%i in ('git config --get remote.origin.url') do set REPO_URL=%%i
-set REPO_URL=%REPO_URL:~19%
+
+:: Handle both SSH and HTTPS URLs
+echo %REPO_URL% | findstr "^git@" >nul
+if not errorlevel 1 (
+    :: SSH URL: git@github.com:user/repo.git
+    set REPO_URL=%REPO_URL:git@github.com:=%
+) else (
+    :: HTTPS URL: https://github.com/user/repo.git
+    set REPO_URL=%REPO_URL:https://github.com/=%
+)
+:: Remove .git suffix if present
 set REPO_URL=%REPO_URL:.git=%
 echo 🔗 Check the build status at: https://github.com/%REPO_URL%/actions
 
