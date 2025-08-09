@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:16
-    # --- CHANGE: Added a default container name for consistency. ---
     container_name: ${POSTGRES_CONTAINER_NAME:-garmin-challenge-postgres}
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-garmin_challenge}
@@ -10,11 +9,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      # The host port (left) maps to the container's internal port (right, 5432).
       - "${POSTGRES_PORT:-5432}:5432"
     restart: unless-stopped
     healthcheck:
-      # --- CHANGE: Used the default-aware variable in the health check. ---
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 30s
       timeout: 10s
@@ -23,7 +20,7 @@ services:
 
   backend:
     # Use versioned Docker image from GitHub Container Registry
-    image: ${BACKEND_IMAGE:-ghcr.io/tallmancycles/challenge/backend:1.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/tallmancycles/challenge/backend:latest}
     container_name: ${BACKEND_CONTAINER_NAME:-garmin-challenge-backend}
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
@@ -60,7 +57,7 @@ services:
 
   frontend:
     # Use versioned Docker image from GitHub Container Registry
-    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:1.0}
+    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:latest}
     container_name: ${FRONTEND_CONTAINER_NAME:-garmin-challenge-frontend}
     ports:
       - "${FRONTEND_PORT}:80"
