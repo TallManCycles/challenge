@@ -33,6 +33,8 @@ public class User
     public string? GarminRefreshToken { get; set; }
     
     public DateTime? GarminConnectedAt { get; set; }
+    
+    public string? ZwiftUserId { get; set; }
 
     public ICollection<Challenge> CreatedChallenges { get; set; } = new List<Challenge>();
     
