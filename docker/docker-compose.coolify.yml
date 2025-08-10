@@ -23,7 +23,7 @@ services:
 
   backend:
     # Use versioned Docker image from GitHub Container Registry
-    image: ${BACKEND_IMAGE:-ghcr.io/tallmancycles/challenge/backend:1.0}
+    image: ${BACKEND_IMAGE:-ghcr.io/tallmancycles/challenge/backend:1.1}
     container_name: ${BACKEND_CONTAINER_NAME:-garmin-challenge-backend}
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
@@ -43,6 +43,7 @@ services:
       - AWS__SecretKey=${AWS_SECRET_KEY}
       - Email__FromAddress=${EMAIL_FROM_ADDRESS}
       - GarminDailyFetch__RunOnStartup=${GARMIN_DAILY_FETCH_RUN_ON_STARTUP:-true}
+      - FitFileUpload__SecretKey=${UPLOAD_SECRET_KEY}
     volumes:
       - backend_logs:/app/logs
     ports:
@@ -60,7 +61,7 @@ services:
 
   frontend:
     # Use versioned Docker image from GitHub Container Registry
-    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:1.0}
+    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:1.1}
     container_name: ${FRONTEND_CONTAINER_NAME:-garmin-challenge-frontend}
     ports:
       - "${FRONTEND_PORT}:80"

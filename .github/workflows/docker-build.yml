@@ -44,8 +44,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
           tags: |
-            # set version 1.0 as default for master branch (instead of latest)
-            type=raw,value=1.0,enable={{is_default_branch}}
+            type=raw,value=1.1,enable={{is_default_branch}}
             # use git short commit for master branch
             type=sha,prefix={{branch}}-,enable={{is_default_branch}}
             # set version tag for git tags (v1.0.0 -> 1.0.0)
@@ -106,7 +105,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
           tags: |
             # set version 1.0 as default for master branch (instead of latest)
-            type=raw,value=1.0,enable={{is_default_branch}}
+            type=raw,value=1.1,enable={{is_default_branch}}
             # use git short commit for master branch
             type=sha,prefix={{branch}}-,enable={{is_default_branch}}
             # set version tag for git tags (v1.0.0 -> 1.0.0)
