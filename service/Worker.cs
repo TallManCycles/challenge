@@ -103,6 +103,13 @@ public class Worker : BackgroundService
             {
                 continue; // Skip already processed files
             }
+            
+            // Skip files that look like "inProgressActivity.fit" or similar in-progress files
+            if (fileName.ToLowerInvariant().Contains("inprogressactivity"))
+            {
+                _logger.LogDebug("Skipping in-progress activity file: {fileName}", fileName);
+                continue;
+            }
 
             try
             {
@@ -120,7 +127,8 @@ public class Worker : BackgroundService
 
     private async Task UploadFitFileAsync(string filePath)
     {
-        using var fileStream = File.OpenRead(filePath);
+        // Use FileShare.Read to prevent IO errors when other processes might be accessing the file
+        using var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         using var content = new MultipartFormDataContent();
         using var fileContent = new StreamContent(fileStream);
         
@@ -154,7 +162,11 @@ public class Worker : BackgroundService
 
             if (File.Exists(trackingPath))
             {
-                var lines = await File.ReadAllLinesAsync(trackingPath);
+                // Use FileShare.Read when reading the tracking file to prevent IO errors
+                using var fileStream = new FileStream(trackingPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                using var reader = new StreamReader(fileStream);
+                var content = await reader.ReadToEndAsync();
+                var lines = content.Split(new[] { Environment.NewLine, "\n", "\r" }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (var line in lines)
                 {
                     if (!string.IsNullOrWhiteSpace(line))
