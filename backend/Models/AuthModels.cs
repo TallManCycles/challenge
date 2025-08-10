@@ -94,4 +94,8 @@ public class UpdateProfileRequest
     public string? FullName { get; set; }
 
     public bool? EmailNotificationsEnabled { get; set; }
+    
+    [MaxLength(100)]
+    public string? ZwiftUserId { get; set; }
 }
+

@@ -11,20 +11,68 @@ public class Activity
     
     public User User { get; set; } = null!;
     
-    [Required]
-    public string GarminActivityId { get; set; } = string.Empty;
+    public string? GarminActivityId { get; set; }
+    
+    public string? ExternalId { get; set; } // For FIT files and other sources
     
     [Required]
     public string ActivityName { get; set; } = string.Empty;
     
-    public decimal Distance { get; set; }
+    public string ActivityType { get; set; } = "cycling";
     
-    public decimal ElevationGain { get; set; }
+    public string Source { get; set; } = "Manual"; // Garmin, Zwift, Manual
     
-    public int MovingTime { get; set; }
+    // Core metrics
+    public double DistanceKm { get; set; }
+    
+    public double ElevationGainM { get; set; }
+    
+    public int DurationMinutes { get; set; }
+    
+    // Timing
+    public DateTime StartTime { get; set; }
+    
+    public DateTime EndTime { get; set; }
     
     [Required]
     public DateTime ActivityDate { get; set; }
     
+    // Performance metrics
+    public double? AverageSpeed { get; set; }
+    
+    public double? MaxSpeed { get; set; }
+    
+    public int? AverageHeartRate { get; set; }
+    
+    public int? MaxHeartRate { get; set; }
+    
+    public int? AveragePower { get; set; }
+    
+    public int? MaxPower { get; set; }
+    
+    public double? AverageCadence { get; set; }
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
+    // Legacy fields for backward compatibility
+    [Obsolete("Use DistanceKm instead")]
+    public decimal Distance 
+    { 
+        get => (decimal)DistanceKm; 
+        set => DistanceKm = (double)value; 
+    }
+    
+    [Obsolete("Use ElevationGainM instead")]
+    public decimal ElevationGain 
+    { 
+        get => (decimal)ElevationGainM; 
+        set => ElevationGainM = (double)value; 
+    }
+    
+    [Obsolete("Use DurationMinutes instead")]
+    public int MovingTime 
+    { 
+        get => DurationMinutes; 
+        set => DurationMinutes = value; 
+    }
 }

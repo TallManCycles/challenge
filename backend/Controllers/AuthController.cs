@@ -19,12 +19,14 @@ public class AuthController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly IFileLoggingService _logger;
+    private readonly IFitFileReprocessingService _fitFileReprocessingService;
 
-    public AuthController(ApplicationDbContext context, IConfiguration configuration, IFileLoggingService logger)
+    public AuthController(ApplicationDbContext context, IConfiguration configuration, IFileLoggingService logger, IFitFileReprocessingService fitFileReprocessingService)
     {
         _context = context;
         _configuration = configuration;
         _logger = logger;
+        _fitFileReprocessingService = fitFileReprocessingService;
     }
 
     [HttpPost("register")]
@@ -242,7 +244,8 @@ public class AuthController : ControllerBase
             fullName = user.FullName,
             createdAt = user.CreatedAt,
             garminConnected = !string.IsNullOrEmpty(user.GarminUserId),
-            emailNotificationsEnabled = user.EmailNotificationsEnabled
+            emailNotificationsEnabled = user.EmailNotificationsEnabled,
+            zwiftUserId = user.ZwiftUserId
         });
     }
 
@@ -266,6 +269,16 @@ public class AuthController : ControllerBase
         if (user.Email != request.Email && await _context.Users.AnyAsync(u => u.Email == request.Email))
             return BadRequest(new { message = "Email is already in use by another account" });
 
+        // Check if ZwiftUserId is already taken by another user
+        if (!string.IsNullOrEmpty(request.ZwiftUserId) && 
+            user.ZwiftUserId != request.ZwiftUserId && 
+            await _context.Users.AnyAsync(u => u.ZwiftUserId == request.ZwiftUserId))
+        {
+            return BadRequest(new { message = "Zwift User ID is already in use by another account" });
+        }
+
+        var wasZwiftUserIdEmpty = string.IsNullOrEmpty(user.ZwiftUserId);
+        
         // Update user profile
         user.Email = request.Email;
         user.FullName = request.FullName;
@@ -273,9 +286,29 @@ public class AuthController : ControllerBase
         {
             user.EmailNotificationsEnabled = request.EmailNotificationsEnabled.Value;
         }
+        user.ZwiftUserId = request.ZwiftUserId;
         user.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+        await _logger.LogInfoAsync($"Profile updated for user: {user.Username} - ZwiftId: {request.ZwiftUserId}", "Auth");
+
+        // If user had no ZwiftUserId before and now does, reprocess their FIT files
+        int reprocessedCount = 0;
+        if (wasZwiftUserIdEmpty && !string.IsNullOrEmpty(request.ZwiftUserId))
+        {
+            try
+            {
+                reprocessedCount = await _fitFileReprocessingService.ReprocessUnprocessedFitFilesAsync(userId);
+                if (reprocessedCount > 0)
+                {
+                    await _logger.LogInfoAsync($"Reprocessed {reprocessedCount} fit files for user {user.Username} after ZwiftUserId update", "Auth");
+                }
+            }
+            catch (Exception ex)
+            {
+                await _logger.LogErrorAsync("Failed to reprocess fit files after ZwiftUserId update", ex, "Auth");
+            }
+        }
 
         return Ok(new
         {
@@ -284,9 +317,12 @@ public class AuthController : ControllerBase
             username = user.Username,
             fullName = user.FullName,
             emailNotificationsEnabled = user.EmailNotificationsEnabled,
-            message = "Profile updated successfully"
+            zwiftUserId = user.ZwiftUserId,
+            message = "Profile updated successfully",
+            reprocessedFitFiles = reprocessedCount
         });
     }
+
 
     private string HashPassword(string password)
     {

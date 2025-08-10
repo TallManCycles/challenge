@@ -18,7 +18,20 @@ public class ChallengeParticipant
     
     public DateTime JoinedAt { get; set; } = DateTime.UtcNow;
     
-    public decimal CurrentTotal { get; set; } = 0;
+    public decimal CurrentTotal { get; set; } = 0; // Legacy field
+    
+    // Progress tracking fields
+    public double CurrentDistance { get; set; } = 0; // in kilometers
+    
+    public double CurrentElevation { get; set; } = 0; // in meters
+    
+    public int CurrentTime { get; set; } = 0; // in minutes
+    
+    public bool IsCompleted { get; set; } = false;
+    
+    public DateTime? CompletedAt { get; set; }
     
     public DateTime? LastActivityDate { get; set; }
+    
+    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
 }

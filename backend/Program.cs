@@ -64,6 +64,15 @@ builder.Services.AddScoped<IGarminActivityProcessingService, GarminActivityProce
 // Add Garmin daily activity fetch service
 builder.Services.AddScoped<IGarminDailyActivityFetchService, GarminDailyActivityFetchService>();
 
+// Add FIT file processing services
+builder.Services.AddScoped<IFitFileProcessingService, FitFileProcessingService>();
+builder.Services.AddScoped<IFitFileReprocessingService, FitFileReprocessingService>();
+
+// Register FitFileBackgroundService as a singleton for DI and as a hosted service to run in the background
+builder.Services.AddSingleton<FitFileBackgroundService>();
+builder.Services.AddSingleton<IFitFileQueue>(x => x.GetRequiredService<FitFileBackgroundService>());
+builder.Services.AddHostedService(x => x.GetRequiredService<FitFileBackgroundService>());
+
 // Add background services
 builder.Services.AddHostedService<GarminWebhookBackgroundService>();
 builder.Services.AddHostedService<GarminDailyActivityBackgroundService>();
@@ -125,35 +134,45 @@ builder.Services.AddSwaggerGen();
 var app = builder.Build();
 
 // Initialize database
+Console.WriteLine("Starting database initialization...");
 try
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<IFileLoggingService>();
     
-    await logger.LogInfoAsync("Initializing PostgreSQL database...");
+    Console.WriteLine("Initializing PostgreSQL database...");
     
     var connectionString = app.Configuration.GetConnectionString("DefaultConnection");
-    await logger.LogInfoAsync($"Connection string: {connectionString}");
+    Console.WriteLine($"Connection string: {connectionString}");
     
     // Apply any pending migrations
-    await logger.LogInfoAsync("Applying database migrations...");
+    Console.WriteLine("Applying database migrations...");
     await context.Database.MigrateAsync();
     
-    await logger.LogInfoAsync("Database migration completed successfully.");
+    Console.WriteLine("Database migration completed successfully.");
     
     // Seed only in development
     if (app.Environment.IsDevelopment())
     {
         var seeder = new DatabaseSeeder(context);
         await seeder.SeedAsync();
-        await logger.LogInfoAsync("Database seeding completed.");
+        Console.WriteLine("Database seeding completed.");
+    }
+    
+    // Now try to initialize file logging service
+    try 
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<IFileLoggingService>();
+        await logger.LogInfoAsync("Application startup completed successfully.");
+    }
+    catch (Exception logEx)
+    {
+        Console.WriteLine($"Warning: File logging service initialization failed: {logEx.Message}");
     }
 }
 catch (Exception ex)
 {
-    var logger = app.Services.GetRequiredService<IFileLoggingService>();
-    await logger.LogErrorAsync("An error occurred while initializing the database. Application will continue but may not function correctly.", ex, "Program");
+    Console.WriteLine($"Error occurred while initializing the database. Application will continue but may not function correctly. Error: {ex}");
 }
 
 // Configure the HTTP request pipeline.

@@ -30,6 +30,13 @@ public class Challenge
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    
+    // Target values based on challenge type
+    public double? TargetDistance { get; set; } // in kilometers
+    
+    public double? TargetElevation { get; set; } // in meters
+    
+    public int? TargetTime { get; set; } // in minutes
 
     public ICollection<ChallengeParticipant> Participants { get; set; } = new List<ChallengeParticipant>();
 }

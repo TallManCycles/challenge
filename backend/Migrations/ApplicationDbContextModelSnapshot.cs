@@ -38,6 +38,22 @@ namespace backend.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
+                    b.Property<string>("ActivityType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<double?>("AverageCadence")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("AverageHeartRate")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("AveragePower")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("AverageSpeed")
+                        .HasColumnType("double precision");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp without time zone");
 
@@ -45,17 +61,47 @@ namespace backend.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<double>("DistanceKm")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("ElevationGain")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<double>("ElevationGainM")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ExternalId")
+                        .HasColumnType("text");
+
                     b.Property<string>("GarminActivityId")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int?>("MaxHeartRate")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxPower")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("MaxSpeed")
+                        .HasColumnType("double precision");
+
                     b.Property<int>("MovingTime")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
@@ -127,6 +173,15 @@ namespace backend.Migrations
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp without time zone");
 
+                    b.Property<double?>("TargetDistance")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("TargetElevation")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("TargetTime")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -153,14 +208,32 @@ namespace backend.Migrations
                     b.Property<int>("ChallengeId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<double>("CurrentDistance")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("CurrentElevation")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("CurrentTime")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("CurrentTotal")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("JoinedAt")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime?>("LastActivityDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("LastUpdated")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<int>("UserId")
@@ -174,6 +247,116 @@ namespace backend.Migrations
                         .IsUnique();
 
                     b.ToTable("ChallengeParticipants");
+                });
+
+            modelBuilder.Entity("backend.Models.FitFileActivity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("ActivityDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ActivityName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("ActivityType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<double?>("AverageCadence")
+                        .HasColumnType("double precision");
+
+                    b.Property<int?>("AverageHeartRate")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("AveragePower")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("AverageSpeed")
+                        .HasColumnType("double precision");
+
+                    b.Property<bool>("ChallengesProcessed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ChallengesProcessedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<double>("DistanceKm")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("ElevationGainM")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime>("EndTime")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime?>("LastProcessingAttempt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<int?>("MaxHeartRate")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("MaxPower")
+                        .HasColumnType("integer");
+
+                    b.Property<double?>("MaxSpeed")
+                        .HasColumnType("double precision");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("ProcessingError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int?>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ZwiftUserId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActivityDate");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("FileName")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ZwiftUserId");
+
+                    b.ToTable("FitFileActivities");
                 });
 
             modelBuilder.Entity("backend.Models.GarminActivity", b =>
@@ -471,6 +654,9 @@ namespace backend.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("ZwiftUserId")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
@@ -541,6 +727,16 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("Challenge");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("backend.Models.FitFileActivity", b =>
+                {
+                    b.HasOne("backend.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
                 });

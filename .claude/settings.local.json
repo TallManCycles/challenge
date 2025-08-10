@@ -12,6 +12,7 @@
       "Bash(del UnitTest1.cs)",
       "Bash(dotnet test)",
       "Bash(dotnet sln:*)",
+      "Bash(dotnet build:*)",
       "Bash(dotnet ef migrations add:*)",
       "Bash(dotnet ef database:*)",
       "Bash(dotnet restore:*)",
@@ -31,6 +32,13 @@
       "Bash(ls:*)",
       "Bash(npm run build:*)",
       "Bash(mv:*)",
+      "Bash(dotnet --version)",
+      "Bash(dotnet --list-sdks)",
+      "Bash(dotnet clean:*)",
+      "Bash(docker build:*)",
+      "Bash(build-service.bat)",
+      "Bash(dotnet publish:*)",
+      "Bash(dotnet remove:*)"
     ],
     "deny": []
   }
