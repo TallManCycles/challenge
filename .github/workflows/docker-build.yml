@@ -27,6 +27,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Read version from VERSION file
+        id: version
+        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -44,7 +48,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
           tags: |
-            type=raw,value=1.1,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
             # use git short commit for master branch
             type=sha,prefix={{branch}}-,enable={{is_default_branch}}
             # set version tag for git tags (v1.0.0 -> 1.0.0)
@@ -87,6 +91,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Read version from VERSION file
+        id: version
+        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -104,8 +112,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
           tags: |
-            # set version 1.0 as default for master branch (instead of latest)
-            type=raw,value=1.1,enable={{is_default_branch}}
+            # set version from VERSION file as default for master branch (instead of latest)
+            type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
             # use git short commit for master branch
             type=sha,prefix={{branch}}-,enable={{is_default_branch}}
             # set version tag for git tags (v1.0.0 -> 1.0.0)
@@ -150,21 +158,27 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Update docker-compose with new images
+      - name: Read version and update docker-compose with new images
         run: |
-          # Extract backend and frontend versions from the metadata
+          # Read version from VERSION file
+          VERSION=$(cat VERSION)
+          
+          # Extract backend and frontend versions from the metadata (fallback to VERSION file)
           BACKEND_VERSION=$(echo "${{ needs.build-backend.outputs.version }}" | head -1)
           FRONTEND_VERSION=$(echo "${{ needs.build-frontend.outputs.version }}" | head -1)
           
+          # Use VERSION file version if metadata version is empty
+          BACKEND_VERSION=${BACKEND_VERSION:-$VERSION}
+          FRONTEND_VERSION=${FRONTEND_VERSION:-$VERSION}
+          
+          echo "Using backend version: $BACKEND_VERSION"
+          echo "Using frontend version: $FRONTEND_VERSION"
+          
           # Update backend image version in docker-compose.coolify.yml (replace the default fallback version)
-          sed -i "s|ghcr.io/tallmancycles/challenge/backend:[0-9.]*}|ghcr.io/tallmancycles/challenge/backend:${BACKEND_VERSION}}|g" docker/docker-compose.coolify.yml
+          sed -i "s|ghcr.io/tallmancycles/challenge/backend:[0-9.]*\.*[0-9]*}|ghcr.io/tallmancycles/challenge/backend:${BACKEND_VERSION}}|g" docker/docker-compose.coolify.yml
           
           # Update frontend image version in docker-compose.coolify.yml (replace the default fallback version)
-          sed -i "s|ghcr.io/tallmancycles/challenge/frontend:[0-9.]*}|ghcr.io/tallmancycles/challenge/frontend:${FRONTEND_VERSION}}|g" docker/docker-compose.coolify.yml
-          
-          # Also update .env.example with the new default versions
-          sed -i "s|ghcr.io/tallmancycles/challenge/backend:[0-9.]*|ghcr.io/tallmancycles/challenge/backend:${BACKEND_VERSION}|g" docker/.env.example
-          sed -i "s|ghcr.io/tallmancycles/challenge/frontend:[0-9.]*|ghcr.io/tallmancycles/challenge/frontend:${FRONTEND_VERSION}|g" docker/.env.example
+          sed -i "s|ghcr.io/tallmancycles/challenge/frontend:[0-9.]*\.*[0-9]*}|ghcr.io/tallmancycles/challenge/frontend:${FRONTEND_VERSION}}|g" docker/docker-compose.coolify.yml
 
       - name: Create deployment info file
         run: |

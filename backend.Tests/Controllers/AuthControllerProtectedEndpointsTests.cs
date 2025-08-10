@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using System.Security.Claims;
+using Moq;
 using backend.Controllers;
 using backend.Data;
 using backend.Models;
@@ -19,6 +20,7 @@ public class AuthControllerProtectedEndpointsTests
     private IConfiguration _configuration;
     private AuthController _controller;
     private IFileLoggingService _logger;
+    private Mock<IFitFileReprocessingService> _fitFileReprocessingService;
 
     [SetUp]
     public void Setup()
@@ -26,7 +28,8 @@ public class AuthControllerProtectedEndpointsTests
         _context = TestDbContextFactory.CreateInMemoryContext();
         _configuration = TestDbContextFactory.CreateTestConfiguration();
         _logger = TestDbContextFactory.CreateTestLogger();
-        _controller = new AuthController(_context, _configuration, _logger);
+        _fitFileReprocessingService = new Mock<IFitFileReprocessingService>();
+        _controller = new AuthController(_context, _configuration, _logger, _fitFileReprocessingService.Object);
     }
 
     [TearDown]

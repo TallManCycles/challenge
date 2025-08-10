@@ -10,6 +10,9 @@ public interface IGarminActivityProcessingService
     Task<List<GarminActivity>> GetCyclingActivitiesAsync(int userId, DateTime fromDate, DateTime toDate);
     Task<List<GarminActivity>> GetUserActivitiesAsync(int userId, int page = 1, int pageSize = 20);
     Task<GarminActivity?> GetActivityDetailsAsync(int activityId, int userId);
+    Task<List<UnifiedActivityResponse>> GetUnifiedUserActivitiesAsync(int userId, int page = 1, int pageSize = 20);
+    Task<List<UnifiedActivityResponse>> GetUnifiedCyclingActivitiesAsync(int userId, DateTime fromDate, DateTime toDate);
+    Task<UnifiedActivityResponse?> GetUnifiedActivityDetailsAsync(int activityId, int userId, string source);
 }
 
 public class GarminActivityProcessingService : IGarminActivityProcessingService
@@ -226,5 +229,119 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
     {
         return await _context.GarminActivities
             .FirstOrDefaultAsync(a => a.Id == activityId && a.UserId == userId);
+    }
+
+    public async Task<List<UnifiedActivityResponse>> GetUnifiedUserActivitiesAsync(int userId, int page = 1, int pageSize = 20)
+    {
+        // Check if user has ZwiftUserId
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        bool includeZwiftActivities = !string.IsNullOrEmpty(user?.ZwiftUserId);
+
+        // Get Garmin activities
+        var garminActivities = await _context.GarminActivities
+            .Where(a => a.UserId == userId)
+            .OrderByDescending(a => a.StartTime)
+            .ToListAsync();
+
+        var unifiedActivities = garminActivities.Select(ActivityMapper.MapFromGarminActivity).ToList();
+
+        // Add FIT file activities if user has ZwiftUserId
+        if (includeZwiftActivities)
+        {
+            var fitFileActivities = await _context.FitFileActivities
+                .Where(f => f.UserId == userId && f.Status == FitFileProcessingStatus.Processed)
+                .OrderByDescending(f => f.StartTime)
+                .ToListAsync();
+
+            var mappedFitActivities = fitFileActivities.Select(ActivityMapper.MapFromFitFileActivity);
+            unifiedActivities.AddRange(mappedFitActivities);
+        }
+
+        // Sort all activities by start time and apply pagination
+        return unifiedActivities
+            .OrderByDescending(a => a.StartTime)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+    }
+
+    public async Task<List<UnifiedActivityResponse>> GetUnifiedCyclingActivitiesAsync(int userId, DateTime fromDate, DateTime toDate)
+    {
+        // Check if user has ZwiftUserId
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        bool includeZwiftActivities = !string.IsNullOrEmpty(user?.ZwiftUserId);
+
+        var cyclingActivityTypes = new[]
+        {
+            GarminActivityType.CYCLING,
+            GarminActivityType.BMX,
+            GarminActivityType.CYCLOCROSS,
+            GarminActivityType.DOWNHILL_BIKING,
+            GarminActivityType.E_BIKE_FITNESS,
+            GarminActivityType.E_BIKE_MOUNTAIN,
+            GarminActivityType.E_ENDURO_MTB,
+            GarminActivityType.ENDURO_MTB,
+            GarminActivityType.GRAVEL_CYCLING,
+            GarminActivityType.INDOOR_CYCLING,
+            GarminActivityType.MOUNTAIN_BIKING,
+            GarminActivityType.RECUMBENT_CYCLING,
+            GarminActivityType.ROAD_BIKING,
+            GarminActivityType.TRACK_CYCLING,
+            GarminActivityType.VIRTUAL_RIDE,
+            GarminActivityType.HANDCYCLING,
+            GarminActivityType.INDOOR_HANDCYCLING
+        };
+
+        // Get Garmin cycling activities
+        var garminActivities = await _context.GarminActivities
+            .Where(a => a.UserId == userId &&
+                       cyclingActivityTypes.Contains(a.ActivityType) &&
+                       a.StartTime >= fromDate &&
+                       a.StartTime <= toDate)
+            .OrderByDescending(a => a.StartTime)
+            .ToListAsync();
+
+        var unifiedActivities = garminActivities.Select(ActivityMapper.MapFromGarminActivity).ToList();
+
+        // Add FIT file activities if user has ZwiftUserId (assume all are cycling)
+        if (includeZwiftActivities)
+        {
+            var fitFileActivities = await _context.FitFileActivities
+                .Where(f => f.UserId == userId && 
+                           f.Status == FitFileProcessingStatus.Processed &&
+                           f.StartTime >= fromDate &&
+                           f.StartTime <= toDate &&
+                           f.ActivityType.ToLower() == "cycling")
+                .OrderByDescending(f => f.StartTime)
+                .ToListAsync();
+
+            var mappedFitActivities = fitFileActivities.Select(ActivityMapper.MapFromFitFileActivity);
+            unifiedActivities.AddRange(mappedFitActivities);
+        }
+
+        // Sort all activities by start time
+        return unifiedActivities
+            .OrderByDescending(a => a.StartTime)
+            .ToList();
+    }
+
+    public async Task<UnifiedActivityResponse?> GetUnifiedActivityDetailsAsync(int activityId, int userId, string source)
+    {
+        if (source == "GarminConnect")
+        {
+            var garminActivity = await _context.GarminActivities
+                .FirstOrDefaultAsync(a => a.Id == activityId && a.UserId == userId);
+            
+            return garminActivity != null ? ActivityMapper.MapFromGarminActivity(garminActivity) : null;
+        }
+        else if (source == "FitFile")
+        {
+            var fitActivity = await _context.FitFileActivities
+                .FirstOrDefaultAsync(f => f.Id == activityId && f.UserId == userId);
+            
+            return fitActivity != null ? ActivityMapper.MapFromFitFileActivity(fitActivity) : null;
+        }
+
+        return null;
     }
 }

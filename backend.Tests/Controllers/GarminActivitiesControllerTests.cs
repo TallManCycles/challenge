@@ -52,14 +52,15 @@ public class GarminActivitiesControllerTests
         public async Task GetUserActivities_ValidRequest_ReturnsOkWithActivities()
         {
             // Arrange
-            var activities = new List<GarminActivity>
+            var activities = new List<UnifiedActivityResponse>
             {
-                new GarminActivity
+                new UnifiedActivityResponse
                 {
                     Id = 1,
                     SummaryId = "test-summary-1",
                     ActivityId = "activity-1",
-                    ActivityType = GarminActivityType.CYCLING,
+                    ActivityType = "CYCLING",
+                    ActivityName = "Morning Ride",
                     StartTime = DateTime.UtcNow.AddHours(-2),
                     DurationInSeconds = 3600,
                     DistanceInMeters = 25000,
@@ -68,14 +69,16 @@ public class GarminActivitiesControllerTests
                     DeviceName = "Edge 830",
                     IsManual = false,
                     IsWebUpload = false,
-                    ReceivedAt = DateTime.UtcNow
+                    ReceivedAt = DateTime.UtcNow,
+                    Source = "GarminConnect"
                 },
-                new GarminActivity
+                new UnifiedActivityResponse
                 {
                     Id = 2,
                     SummaryId = "test-summary-2",
                     ActivityId = "activity-2",
-                    ActivityType = GarminActivityType.RUNNING,
+                    ActivityType = "RUNNING",
+                    ActivityName = "Evening Run",
                     StartTime = DateTime.UtcNow.AddHours(-1),
                     DurationInSeconds = 1800,
                     DistanceInMeters = 5000,
@@ -83,14 +86,15 @@ public class GarminActivitiesControllerTests
                     DeviceName = "Fenix 6",
                     IsManual = false,
                     IsWebUpload = false,
-                    ReceivedAt = DateTime.UtcNow
+                    ReceivedAt = DateTime.UtcNow,
+                    Source = "GarminConnect"
                 }
             };
 
-            _mockActivityService.Setup(s => s.GetUserActivitiesAsync(123, 1, 20))
+            _mockActivityService.Setup(s => s.GetUnifiedUserActivitiesAsync(123, 1, 20))
                 .ReturnsAsync(activities);
-            _mockActivityService.Setup(s => s.GetUserActivitiesAsync(123, 2, 1))
-                .ReturnsAsync(new List<GarminActivity>());
+            _mockActivityService.Setup(s => s.GetUnifiedUserActivitiesAsync(123, 2, 1))
+                .ReturnsAsync(new List<UnifiedActivityResponse>());
 
             // Act
             var result = await _controller.GetUserActivities(1, 20);
@@ -135,7 +139,7 @@ public class GarminActivitiesControllerTests
         public async Task GetUserActivities_ServiceThrows_ReturnsInternalServerError()
         {
             // Arrange
-            _mockActivityService.Setup(s => s.GetUserActivitiesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            _mockActivityService.Setup(s => s.GetUnifiedUserActivitiesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
@@ -151,38 +155,39 @@ public class GarminActivitiesControllerTests
         public async Task GetUserActivities_LimitPageSize_EnforcesMaximum()
         {
             // Arrange
-            _mockActivityService.Setup(s => s.GetUserActivitiesAsync(123, 1, 50))
-                .ReturnsAsync(new List<GarminActivity>());
-            _mockActivityService.Setup(s => s.GetUserActivitiesAsync(123, 2, 1))
-                .ReturnsAsync(new List<GarminActivity>());
+            _mockActivityService.Setup(s => s.GetUnifiedUserActivitiesAsync(123, 1, 50))
+                .ReturnsAsync(new List<UnifiedActivityResponse>());
+            _mockActivityService.Setup(s => s.GetUnifiedUserActivitiesAsync(123, 2, 1))
+                .ReturnsAsync(new List<UnifiedActivityResponse>());
 
             // Act
             var result = await _controller.GetUserActivities(1, 100); // Request 100, should be limited to 50
 
             // Assert
-            _mockActivityService.Verify(s => s.GetUserActivitiesAsync(123, 1, 50), Times.Once);
+            _mockActivityService.Verify(s => s.GetUnifiedUserActivitiesAsync(123, 1, 50), Times.Once);
         }
 
         [Test]
         public async Task GetUserActivities_ActivityTypeAsString_ReturnsStringValue()
         {
             // Arrange
-            var activities = new List<GarminActivity>
+            var activities = new List<UnifiedActivityResponse>
             {
-                new GarminActivity
+                new UnifiedActivityResponse
                 {
                     Id = 1,
-                    ActivityType = GarminActivityType.CYCLING,
+                    ActivityType = "CYCLING",
                     StartTime = DateTime.UtcNow,
                     DurationInSeconds = 3600,
-                    ReceivedAt = DateTime.UtcNow
+                    ReceivedAt = DateTime.UtcNow,
+                    Source = "GarminConnect"
                 }
             };
 
-            _mockActivityService.Setup(s => s.GetUserActivitiesAsync(123, 1, 20))
+            _mockActivityService.Setup(s => s.GetUnifiedUserActivitiesAsync(123, 1, 20))
                 .ReturnsAsync(activities);
-            _mockActivityService.Setup(s => s.GetUserActivitiesAsync(123, 2, 1))
-                .ReturnsAsync(new List<GarminActivity>());
+            _mockActivityService.Setup(s => s.GetUnifiedUserActivitiesAsync(123, 2, 1))
+                .ReturnsAsync(new List<UnifiedActivityResponse>());
 
             // Act
             var result = await _controller.GetUserActivities();
@@ -208,19 +213,20 @@ public class GarminActivitiesControllerTests
             // Arrange
             var fromDate = DateTime.UtcNow.AddDays(-30);
             var toDate = DateTime.UtcNow;
-            var activities = new List<GarminActivity>
+            var activities = new List<UnifiedActivityResponse>
             {
-                new GarminActivity
+                new UnifiedActivityResponse
                 {
                     Id = 1,
-                    ActivityType = GarminActivityType.CYCLING,
+                    ActivityType = "CYCLING",
                     StartTime = DateTime.UtcNow.AddDays(-1),
                     DurationInSeconds = 3600,
-                    ReceivedAt = DateTime.UtcNow
+                    ReceivedAt = DateTime.UtcNow,
+                    Source = "GarminConnect"
                 }
             };
 
-            _mockActivityService.Setup(s => s.GetCyclingActivitiesAsync(123, It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            _mockActivityService.Setup(s => s.GetUnifiedCyclingActivitiesAsync(123, It.IsAny<DateTime>(), It.IsAny<DateTime>()))
                 .ReturnsAsync(activities);
 
             // Act
@@ -243,14 +249,14 @@ public class GarminActivitiesControllerTests
         public async Task GetCyclingActivities_NoDatesProvided_UsesDefaults()
         {
             // Arrange
-            _mockActivityService.Setup(s => s.GetCyclingActivitiesAsync(123, It.IsAny<DateTime>(), It.IsAny<DateTime>()))
-                .ReturnsAsync(new List<GarminActivity>());
+            _mockActivityService.Setup(s => s.GetUnifiedCyclingActivitiesAsync(123, It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+                .ReturnsAsync(new List<UnifiedActivityResponse>());
 
             // Act
             var result = await _controller.GetCyclingActivities();
 
             // Assert
-            _mockActivityService.Verify(s => s.GetCyclingActivitiesAsync(
+            _mockActivityService.Verify(s => s.GetUnifiedCyclingActivitiesAsync(
                 123, 
                 It.Is<DateTime>(d => d <= DateTime.UtcNow.AddMonths(-3).AddDays(1) && d >= DateTime.UtcNow.AddMonths(-3).AddDays(-1)),
                 It.Is<DateTime>(d => d <= DateTime.UtcNow.AddDays(1) && d >= DateTime.UtcNow.AddDays(-1))
@@ -261,7 +267,7 @@ public class GarminActivitiesControllerTests
         public async Task GetCyclingActivities_ServiceThrows_ReturnsInternalServerError()
         {
             // Arrange
-            _mockActivityService.Setup(s => s.GetCyclingActivitiesAsync(It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+            _mockActivityService.Setup(s => s.GetUnifiedCyclingActivitiesAsync(It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<DateTime>()))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
@@ -281,12 +287,13 @@ public class GarminActivitiesControllerTests
         public async Task GetActivityDetails_ValidRequest_ReturnsOkWithActivity()
         {
             // Arrange
-            var activity = new GarminActivity
+            var activity = new UnifiedActivityResponse
             {
                 Id = 1,
                 SummaryId = "test-summary",
                 ActivityId = "activity-id",
-                ActivityType = GarminActivityType.CYCLING,
+                ActivityType = "CYCLING",
+                ActivityName = "Test Ride",
                 StartTime = DateTime.UtcNow.AddHours(-2),
                 StartTimeOffsetInSeconds = 3600,
                 DurationInSeconds = 3600,
@@ -298,10 +305,11 @@ public class GarminActivitiesControllerTests
                 IsWebUpload = false,
                 ReceivedAt = DateTime.UtcNow,
                 ProcessedAt = DateTime.UtcNow,
-                IsProcessed = true
+                IsProcessed = true,
+                Source = "GarminConnect"
             };
 
-            _mockActivityService.Setup(s => s.GetActivityDetailsAsync(1, 123))
+            _mockActivityService.Setup(s => s.GetUnifiedActivityDetailsAsync(1, 123, "GarminConnect"))
                 .ReturnsAsync(activity);
 
             // Act
@@ -325,8 +333,8 @@ public class GarminActivitiesControllerTests
         public async Task GetActivityDetails_ActivityNotFound_ReturnsNotFound()
         {
             // Arrange
-            _mockActivityService.Setup(s => s.GetActivityDetailsAsync(999, 123))
-                .ReturnsAsync((GarminActivity?)null);
+            _mockActivityService.Setup(s => s.GetUnifiedActivityDetailsAsync(999, 123, "GarminConnect"))
+                .ReturnsAsync((UnifiedActivityResponse?)null);
 
             // Act
             var result = await _controller.GetActivityDetails(999);
@@ -339,7 +347,7 @@ public class GarminActivitiesControllerTests
         public async Task GetActivityDetails_ServiceThrows_ReturnsInternalServerError()
         {
             // Arrange
-            _mockActivityService.Setup(s => s.GetActivityDetailsAsync(It.IsAny<int>(), It.IsAny<int>()))
+            _mockActivityService.Setup(s => s.GetUnifiedActivityDetailsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string>()))
                 .ThrowsAsync(new Exception("Database error"));
 
             // Act
@@ -359,18 +367,20 @@ public class GarminActivitiesControllerTests
             var utcReceivedAt = DateTime.UtcNow.AddMinutes(-30);
             var utcProcessedAt = DateTime.UtcNow.AddMinutes(-20);
 
-            var activity = new GarminActivity
+            var activity = new UnifiedActivityResponse
             {
                 Id = 1,
-                ActivityType = GarminActivityType.CYCLING,
+                SummaryId = "test-summary",
+                ActivityType = "CYCLING",
                 StartTime = utcStartTime,
                 DurationInSeconds = 3600,
                 ReceivedAt = utcReceivedAt,
                 ProcessedAt = utcProcessedAt,
-                IsProcessed = true
+                IsProcessed = true,
+                Source = "GarminConnect"
             };
 
-            _mockActivityService.Setup(s => s.GetActivityDetailsAsync(1, 123))
+            _mockActivityService.Setup(s => s.GetUnifiedActivityDetailsAsync(1, 123, "GarminConnect"))
                 .ReturnsAsync(activity);
 
             // Act

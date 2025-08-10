@@ -27,6 +27,7 @@ export interface User {
   createdAt?: string
   garminConnected: boolean
   emailNotificationsEnabled: boolean
+  zwiftUserId?: string
 }
 
 export interface ChangePasswordRequest {
@@ -49,4 +50,16 @@ export interface UpdateProfileRequest {
   email: string
   fullName?: string
   emailNotificationsEnabled?: boolean
+  zwiftUserId?: string
+}
+
+export interface UpdateProfileResponse {
+  userId: number
+  email: string
+  username: string
+  fullName?: string
+  emailNotificationsEnabled: boolean
+  zwiftUserId?: string
+  message: string
+  reprocessedFitFiles?: number
 }

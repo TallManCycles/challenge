@@ -28,6 +28,16 @@ public class FitFileProcessingService : IFitFileProcessingService
         {
             _logger.LogInformation("Processing FIT file: {fileName}", fileName);
 
+            // Check if file already exists
+            var existingFitFile = await _context.FitFileActivities
+                .FirstOrDefaultAsync(f => f.FileName == fileName);
+            
+            if (existingFitFile != null)
+            {
+                _logger.LogInformation("FIT file already exists: {fileName}, skipping", fileName);
+                return true;
+            }
+
             // Parse the FIT file
             var fitData = await ParseFitFileAsync(fileContent, fileName);
             if (fitData == null)
@@ -38,27 +48,40 @@ public class FitFileProcessingService : IFitFileProcessingService
 
             // Find the user by ZwiftUserId
             User? user = null;
+            FitFileProcessingStatus status = FitFileProcessingStatus.Unprocessed;
+            
             if (!string.IsNullOrEmpty(fitData.ZwiftUserId))
             {
                 user = await _context.Users
                     .FirstOrDefaultAsync(u => u.ZwiftUserId == fitData.ZwiftUserId);
+                
+                if (user == null)
+                {
+                    status = FitFileProcessingStatus.UserNotFound;
+                    _logger.LogWarning("User not found for ZwiftUserId: {zwiftUserId} in file: {fileName}", 
+                        fitData.ZwiftUserId, fileName);
+                }
+                else
+                {
+                    status = FitFileProcessingStatus.Processed;
+                }
+            }
+            else
+            {
+                _logger.LogWarning("No ZwiftUserId found in FIT file: {fileName}", fileName);
             }
 
-            if (user == null)
+            // Create FitFileActivity record
+            var fitFileActivity = new FitFileActivity
             {
-                _logger.LogWarning("User not found for ZwiftUserId: {zwiftUserId} in file: {fileName}", 
-                    fitData.ZwiftUserId, fileName);
-                return false;
-            }
-
-            // Create activity record
-            var activity = new backend.Models.Activity
-            {
-                UserId = user.Id,
+                UserId = user?.Id,
+                FileName = fileName,
+                ZwiftUserId = fitData.ZwiftUserId,
                 ActivityName = fitData.WorkoutName ?? $"Zwift Activity - {fitData.ActivityStartTime:yyyy-MM-dd HH:mm}",
                 ActivityType = fitData.ActivityType,
                 StartTime = fitData.ActivityStartTime,
                 EndTime = fitData.ActivityEndTime,
+                ActivityDate = fitData.ActivityStartTime.Date,
                 DistanceKm = fitData.TotalDistanceMeters / 1000.0,
                 ElevationGainM = fitData.TotalElevationGainMeters,
                 DurationMinutes = (int)fitData.TotalTime.TotalMinutes,
@@ -69,19 +92,21 @@ public class FitFileProcessingService : IFitFileProcessingService
                 AveragePower = fitData.AveragePower,
                 MaxPower = fitData.MaxPower,
                 AverageCadence = fitData.AverageCadence,
-                Source = "Zwift",
-                ExternalId = fileName // Use filename as external ID
+                Status = status,
+                ProcessedAt = status == FitFileProcessingStatus.Processed ? System.DateTime.UtcNow : null,
+                LastProcessingAttempt = System.DateTime.UtcNow
             };
 
-            _context.Activities.Add(activity);
-            
+            _context.FitFileActivities.Add(fitFileActivity);
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Successfully processed FIT file: {fileName} for user: {userId}", 
-                fileName, user.Id);
+            _logger.LogInformation("Saved FIT file activity: {fileName} with status: {status}", fileName, status);
 
-            // Process against challenges
-            await ProcessChallengesAsync(user, activity);
+            // Process against challenges if user was found
+            if (user != null && status == FitFileProcessingStatus.Processed)
+            {
+                await ProcessChallengesForFitFileAsync(user, fitFileActivity);
+            }
 
             return true;
         }
@@ -338,7 +363,7 @@ public class FitFileProcessingService : IFitFileProcessingService
         }
     }
 
-    private async Task ProcessChallengesAsync(User user, backend.Models.Activity activity)
+    private async Task ProcessChallengesForFitFileAsync(User user, FitFileActivity fitFileActivity)
     {
         try
         {
@@ -346,8 +371,8 @@ public class FitFileProcessingService : IFitFileProcessingService
             var activeParticipations = await _context.ChallengeParticipants
                 .Include(cp => cp.Challenge)
                 .Where(cp => cp.UserId == user.Id && 
-                           cp.Challenge.StartDate <= activity.StartTime && 
-                           cp.Challenge.EndDate >= activity.StartTime)
+                           cp.Challenge.StartDate <= fitFileActivity.StartTime && 
+                           cp.Challenge.EndDate >= fitFileActivity.StartTime)
                 .ToListAsync();
 
             foreach (var participation in activeParticipations)
@@ -359,24 +384,24 @@ public class FitFileProcessingService : IFitFileProcessingService
                 switch (challenge.ChallengeType)
                 {
                     case ChallengeType.Distance:
-                        participation.CurrentDistance += activity.DistanceKm;
+                        participation.CurrentDistance += fitFileActivity.DistanceKm;
                         progressUpdated = true;
                         _logger.LogInformation("Updated distance progress for user {userId} in challenge {challengeId}: +{distance}km", 
-                            user.Id, challenge.Id, activity.DistanceKm);
+                            user.Id, challenge.Id, fitFileActivity.DistanceKm);
                         break;
 
                     case ChallengeType.Elevation:
-                        participation.CurrentElevation += activity.ElevationGainM;
+                        participation.CurrentElevation += fitFileActivity.ElevationGainM;
                         progressUpdated = true;
                         _logger.LogInformation("Updated elevation progress for user {userId} in challenge {challengeId}: +{elevation}m", 
-                            user.Id, challenge.Id, activity.ElevationGainM);
+                            user.Id, challenge.Id, fitFileActivity.ElevationGainM);
                         break;
 
                     case ChallengeType.Time:
-                        participation.CurrentTime += activity.DurationMinutes;
+                        participation.CurrentTime += fitFileActivity.DurationMinutes;
                         progressUpdated = true;
                         _logger.LogInformation("Updated time progress for user {userId} in challenge {challengeId}: +{time}min", 
-                            user.Id, challenge.Id, activity.DurationMinutes);
+                            user.Id, challenge.Id, fitFileActivity.DurationMinutes);
                         break;
                 }
 
@@ -403,11 +428,15 @@ public class FitFileProcessingService : IFitFileProcessingService
                 }
             }
 
+            // Mark challenges as processed for this fit file activity
+            fitFileActivity.ChallengesProcessed = true;
+            fitFileActivity.ChallengesProcessedAt = System.DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing challenges for user {userId}", user.Id);
+            _logger.LogError(ex, "Error processing challenges for user {userId} and fit file {fileName}", user.Id, fitFileActivity.FileName);
         }
     }
 }

@@ -154,6 +154,38 @@
           </div>
         </section>
 
+        <!-- Zwift Integration Section -->
+        <section class="bg-gray-800 rounded-lg p-6">
+          <div class="flex items-center mb-6">
+            <div class="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
+              <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16z"/>
+                <path d="M8 12l2 2 4-4"/>
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white">Zwift Integration</h3>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6">
+            <div>
+              <label for="zwiftUserId" class="block text-sm font-medium text-gray-300 mb-2">
+                Zwift User ID
+              </label>
+              <input
+                id="zwiftUserId"
+                v-model="profileForm.zwiftUserId"
+                type="text"
+                placeholder="e.g., 123456789"
+                class="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
+              />
+              <p class="text-sm text-gray-400 mt-2">
+                Enter your Zwift User ID to link your FIT file activities to challenges. 
+                Any unprocessed FIT files will be automatically reprocessed when you save this.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <!-- Change Password Section -->
         <section class="bg-gray-800 rounded-lg p-6">
           <div class="flex items-center mb-6">
@@ -369,7 +401,8 @@ const authStore = useAuthStore()
 const profileForm = ref({
   fullName: '',
   email: '',
-  emailNotificationsEnabled: true
+  emailNotificationsEnabled: true,
+  zwiftUserId: ''
 })
 
 const passwordForm = ref({
@@ -395,6 +428,7 @@ onMounted(async () => {
     profileForm.value.email = user.email
     profileForm.value.fullName = user.fullName || ''
     profileForm.value.emailNotificationsEnabled = user.emailNotificationsEnabled
+    profileForm.value.zwiftUserId = user.zwiftUserId || ''
   } catch {
     showToastMessage('Failed to load user data', 'error')
   }
@@ -501,6 +535,7 @@ const cancelChanges = async () => {
     profileForm.value.email = user.email
     profileForm.value.fullName = user.fullName || ''
     profileForm.value.emailNotificationsEnabled = user.emailNotificationsEnabled
+    profileForm.value.zwiftUserId = user.zwiftUserId || ''
     passwordForm.value.currentPassword = ''
     passwordForm.value.newPassword = ''
     showToastMessage('Changes cancelled', 'info')
@@ -516,10 +551,11 @@ const handleSubmit = async () => {
 
   try {
     // Update profile information
-    await authService.updateProfile({
+    const response = await authService.updateProfile({
       email: profileForm.value.email,
       fullName: profileForm.value.fullName || undefined,
-      emailNotificationsEnabled: profileForm.value.emailNotificationsEnabled
+      emailNotificationsEnabled: profileForm.value.emailNotificationsEnabled,
+      zwiftUserId: profileForm.value.zwiftUserId || undefined
     })
 
     // Handle password change if provided
@@ -535,7 +571,12 @@ const handleSubmit = async () => {
       passwordForm.value.newPassword = ''
     }
 
-    showToastMessage('Settings saved successfully!', 'success')
+    // Show success message with FIT file reprocessing info if applicable
+    let successMessage = 'Settings saved successfully!'
+    if (response.reprocessedFitFiles && response.reprocessedFitFiles > 0) {
+      successMessage += ` ${response.reprocessedFitFiles} FIT files were reprocessed for challenges.`
+    }
+    showToastMessage(successMessage, 'success')
 
     // Refresh user data in auth store
     await authStore.getCurrentUser()

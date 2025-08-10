@@ -59,15 +59,15 @@ public class FitFileProcessingServiceTests
         Assert.True(result, "FIT file processing should succeed");
         
         // Verify that an activity was created
-        var activity = await _context.Activities
-            .FirstOrDefaultAsync(a => a.ExternalId == fileName);
+        var activity = await _context.FitFileActivities
+            .FirstOrDefaultAsync(a => a.FileName == fileName);
         
         Assert.NotNull(activity);
         Assert.That(activity.UserId, Is.EqualTo(testUser.Id));
         Assert.That(activity.ActivityType, Is.EqualTo("cycling"));
         Assert.That(activity.DistanceKm, Is.GreaterThan(0), "Distance should be greater than 0");
         Assert.That(activity.DurationMinutes, Is.GreaterThan(0), "Duration should be greater than 0");
-        Assert.That(activity.Source, Is.EqualTo("Zwift"));
+        Assert.That(activity.ZwiftUserId, Is.EqualTo(testUser.ZwiftUserId));
 
         // Log the extracted data for verification
         _mockLogger.Verify(
@@ -107,25 +107,10 @@ public class FitFileProcessingServiceTests
         // Assert
         Assert.True(result);
         
-        var activity = await _context.Activities
-            .FirstOrDefaultAsync(a => a.ExternalId == fileName);
+        var activity = await _context.FitFileActivities
+            .FirstOrDefaultAsync(a => a.FileName == fileName);
         
         Assert.NotNull(activity);
-        
-        // Print extracted values for manual verification
-        Console.WriteLine($"Activity Name: {activity.ActivityName}");
-        Console.WriteLine($"Distance: {activity.DistanceKm} km");
-        Console.WriteLine($"Duration: {activity.DurationMinutes} minutes");
-        Console.WriteLine($"Elevation Gain: {activity.ElevationGainM} m");
-        Console.WriteLine($"Start Time: {activity.StartTime}");
-        Console.WriteLine($"End Time: {activity.EndTime}");
-        Console.WriteLine($"Average Speed: {activity.AverageSpeed} km/h");
-        Console.WriteLine($"Max Speed: {activity.MaxSpeed} km/h");
-        Console.WriteLine($"Average Heart Rate: {activity.AverageHeartRate}");
-        Console.WriteLine($"Max Heart Rate: {activity.MaxHeartRate}");
-        Console.WriteLine($"Average Power: {activity.AveragePower} W");
-        Console.WriteLine($"Max Power: {activity.MaxPower} W");
-        Console.WriteLine($"Average Cadence: {activity.AverageCadence}");
         
         // Basic validation - these should be reasonable values for a cycling activity
         Assert.That(activity.DistanceKm, Is.GreaterThanOrEqualTo(0));

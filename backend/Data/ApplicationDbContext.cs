@@ -17,6 +17,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<GarminOAuthToken> GarminOAuthTokens { get; set; }
     public DbSet<GarminActivity> GarminActivities { get; set; }
     public DbSet<GarminWebhookPayload> GarminWebhookPayloads { get; set; }
+    public DbSet<FitFileActivity> FitFileActivities { get; set; }
     public DbSet<Quote> Quotes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -172,6 +173,32 @@ public class ApplicationDbContext : DbContext
             
             entity.Property(e => e.WebhookType)
                 .HasConversion<string>();
+        });
+
+        // FitFileActivity entity configuration
+        modelBuilder.Entity<FitFileActivity>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.HasIndex(e => e.FileName).IsUnique();
+            entity.HasIndex(e => e.ZwiftUserId);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ActivityDate);
+            entity.HasIndex(e => e.CreatedAt);
+            
+            entity.Property(e => e.FileName).HasMaxLength(255);
+            entity.Property(e => e.ZwiftUserId).HasMaxLength(100);
+            entity.Property(e => e.ActivityName).HasMaxLength(255);
+            entity.Property(e => e.ActivityType).HasMaxLength(50);
+            entity.Property(e => e.ProcessingError).HasMaxLength(1000);
+            entity.Property(e => e.Status)
+                .HasConversion<string>();
+            
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // Quote entity configuration

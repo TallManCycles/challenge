@@ -36,10 +36,10 @@ public class GarminActivitiesController : ControllerBase
 
             if (pageSize > 50) pageSize = 50; // Limit page size
 
-            var activities = await _activityService.GetUserActivitiesAsync(userId, page, pageSize);
+            var activities = await _activityService.GetUnifiedUserActivitiesAsync(userId, page, pageSize);
             
             // Check if there are more activities
-            var nextPageActivities = await _activityService.GetUserActivitiesAsync(userId, page + 1, 1);
+            var nextPageActivities = await _activityService.GetUnifiedUserActivitiesAsync(userId, page + 1, 1);
             bool hasMore = nextPageActivities.Any();
 
             return Ok(new
@@ -49,8 +49,10 @@ public class GarminActivitiesController : ControllerBase
                     a.Id,
                     a.SummaryId,
                     a.ActivityId,
-                    ActivityType = a.ActivityType.ToString(),
+                    a.ActivityType,
+                    a.ActivityName,
                     StartTime = DateTime.SpecifyKind(a.StartTime, DateTimeKind.Utc),
+                    a.StartTimeOffsetInSeconds,
                     a.DurationInSeconds,
                     a.DistanceInMeters,
                     a.TotalElevationGainInMeters,
@@ -59,7 +61,12 @@ public class GarminActivitiesController : ControllerBase
                     a.DeviceName,
                     a.IsManual,
                     a.IsWebUpload,
-                    ReceivedAt = DateTime.SpecifyKind(a.ReceivedAt, DateTimeKind.Utc)
+                    a.IsProcessed,
+                    ReceivedAt = DateTime.SpecifyKind(a.ReceivedAt, DateTimeKind.Utc),
+                    ProcessedAt = a.ProcessedAt.HasValue ? DateTime.SpecifyKind(a.ProcessedAt.Value, DateTimeKind.Utc) : (DateTime?)null,
+                    a.Source,
+                    a.FileName,
+                    a.ZwiftUserId
                 }),
                 hasMore,
                 page,
@@ -89,7 +96,7 @@ public class GarminActivitiesController : ControllerBase
             fromDate ??= DateTime.UtcNow.AddMonths(-3);
             toDate ??= DateTime.UtcNow;
 
-            var activities = await _activityService.GetCyclingActivitiesAsync(userId, fromDate.Value, toDate.Value);
+            var activities = await _activityService.GetUnifiedCyclingActivitiesAsync(userId, fromDate.Value, toDate.Value);
 
             return Ok(new
             {
@@ -98,8 +105,10 @@ public class GarminActivitiesController : ControllerBase
                     a.Id,
                     a.SummaryId,
                     a.ActivityId,
-                    ActivityType = a.ActivityType.ToString(),
+                    a.ActivityType,
+                    a.ActivityName,
                     StartTime = DateTime.SpecifyKind(a.StartTime, DateTimeKind.Utc),
+                    a.StartTimeOffsetInSeconds,
                     a.DurationInSeconds,
                     a.DistanceInMeters,
                     a.TotalElevationGainInMeters,
@@ -107,7 +116,13 @@ public class GarminActivitiesController : ControllerBase
                     a.ActiveKilocalories,
                     a.DeviceName,
                     a.IsManual,
-                    a.IsWebUpload
+                    a.IsWebUpload,
+                    a.IsProcessed,
+                    ReceivedAt = DateTime.SpecifyKind(a.ReceivedAt, DateTimeKind.Utc),
+                    ProcessedAt = a.ProcessedAt.HasValue ? DateTime.SpecifyKind(a.ProcessedAt.Value, DateTimeKind.Utc) : (DateTime?)null,
+                    a.Source,
+                    a.FileName,
+                    a.ZwiftUserId
                 }),
                 fromDate,
                 toDate,
@@ -122,7 +137,7 @@ public class GarminActivitiesController : ControllerBase
     }
 
     [HttpGet("{activityId}/details")]
-    public async Task<IActionResult> GetActivityDetails(int activityId)
+    public async Task<IActionResult> GetActivityDetails(int activityId, [FromQuery] string source = "GarminConnect")
     {
         try
         {
@@ -132,7 +147,7 @@ public class GarminActivitiesController : ControllerBase
                 return Unauthorized("User ID not found in token");
             }
 
-            var activity = await _activityService.GetActivityDetailsAsync(activityId, userId);
+            var activity = await _activityService.GetUnifiedActivityDetailsAsync(activityId, userId, source);
             
             if (activity == null)
             {
@@ -144,7 +159,8 @@ public class GarminActivitiesController : ControllerBase
                 activity.Id,
                 activity.SummaryId,
                 activity.ActivityId,
-                ActivityType = activity.ActivityType.ToString(),
+                activity.ActivityType,
+                activity.ActivityName,
                 StartTime = DateTime.SpecifyKind(activity.StartTime, DateTimeKind.Utc),
                 activity.StartTimeOffsetInSeconds,
                 activity.DurationInSeconds,
@@ -155,9 +171,12 @@ public class GarminActivitiesController : ControllerBase
                 activity.DeviceName,
                 activity.IsManual,
                 activity.IsWebUpload,
+                activity.IsProcessed,
                 ReceivedAt = DateTime.SpecifyKind(activity.ReceivedAt, DateTimeKind.Utc),
                 ProcessedAt = activity.ProcessedAt.HasValue ? DateTime.SpecifyKind(activity.ProcessedAt.Value, DateTimeKind.Utc) : (DateTime?)null,
-                activity.IsProcessed
+                activity.Source,
+                activity.FileName,
+                activity.ZwiftUserId
             });
         }
         catch (Exception ex)

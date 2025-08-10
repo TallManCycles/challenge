@@ -23,7 +23,7 @@ services:
 
   backend:
     # Use versioned Docker image from GitHub Container Registry
-    image: ${BACKEND_IMAGE:-ghcr.io/tallmancycles/challenge/backend:1.1}
+    image: ${BACKEND_IMAGE:-ghcr.io/tallmancycles/challenge/backend:1.2.0}
     container_name: ${BACKEND_CONTAINER_NAME:-garmin-challenge-backend}
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
@@ -61,7 +61,7 @@ services:
 
   frontend:
     # Use versioned Docker image from GitHub Container Registry
-    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:1.1}
+    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:1.2.0}
     container_name: ${FRONTEND_CONTAINER_NAME:-garmin-challenge-frontend}
     ports:
       - "${FRONTEND_PORT}:80"

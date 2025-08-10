@@ -6,7 +6,8 @@ import type {
   ChangePasswordRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
-  UpdateProfileRequest
+  UpdateProfileRequest,
+  UpdateProfileResponse
 } from '../types/auth'
 
 const API_BASE_URL = `${import.meta.env.VITE_APP_API_ENDPOINT || 'http://localhost:5000'}/api`
@@ -159,8 +160,8 @@ class AuthService {
     })
   }
 
-  async updateProfile(data: UpdateProfileRequest): Promise<User> {
-    return await this.makeRequest<User>('/auth/profile', {
+  async updateProfile(data: UpdateProfileRequest): Promise<UpdateProfileResponse> {
+    return await this.makeRequest<UpdateProfileResponse>('/auth/profile', {
       method: 'PATCH',
       body: JSON.stringify(data),
     })
