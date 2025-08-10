@@ -23,8 +23,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy the published app
 COPY --from=build /app/publish ./
 
-# Create logs directory and set ownership
-RUN mkdir -p /app/logs && chown -R appuser:appuser /app
+# Create logs and uploads directories and set ownership
+RUN mkdir -p /app/logs /app/uploads/fit-files && chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
@@ -55,6 +55,10 @@ ENV GarminOAuth__RedirectUrl=""
 # Logging configuration
 ENV Logging__LogLevel__Default="Information"
 ENV Logging__LogLevel__Microsoft_AspNetCore="Warning"
+
+# Fit file upload configuration
+ENV FitFileUpload__SecretKey="default-fit-upload-secret"
+ENV FitFileUpload__StoragePath="/app/uploads/fit-files"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \

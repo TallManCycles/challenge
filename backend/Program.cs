@@ -64,6 +64,14 @@ builder.Services.AddScoped<IGarminActivityProcessingService, GarminActivityProce
 // Add Garmin daily activity fetch service
 builder.Services.AddScoped<IGarminDailyActivityFetchService, GarminDailyActivityFetchService>();
 
+// Add FIT file processing services
+builder.Services.AddScoped<IFitFileProcessingService, FitFileProcessingService>();
+
+// Register FitFileBackgroundService as a singleton for DI and as a hosted service to run in the background
+builder.Services.AddSingleton<FitFileBackgroundService>();
+builder.Services.AddSingleton<IFitFileQueue>(x => x.GetRequiredService<FitFileBackgroundService>());
+builder.Services.AddHostedService(x => x.GetRequiredService<FitFileBackgroundService>());
+
 // Add background services
 builder.Services.AddHostedService<GarminWebhookBackgroundService>();
 builder.Services.AddHostedService<GarminDailyActivityBackgroundService>();
