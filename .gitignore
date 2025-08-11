@@ -60,6 +60,10 @@ dist-ssr/
 .env.test.local
 .env.production.local
 
+# ASP.NET Core appsettings (may contain secrets)
+appsettings.Development.json
+appsettings.Production.json
+
 # IDE
 .vscode/*
 !.vscode/extensions.json
