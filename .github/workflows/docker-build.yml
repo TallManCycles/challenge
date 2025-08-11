@@ -21,7 +21,7 @@ jobs:
     outputs:
       image: ${{ steps.image.outputs.image }}
       digest: ${{ steps.build.outputs.digest }}
-      version: ${{ steps.meta.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
     
     steps:
       - name: Checkout repository
@@ -75,7 +75,7 @@ jobs:
 
       - name: Output image
         id: image
-        run: echo "image=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+        run: echo "image=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -85,7 +85,7 @@ jobs:
     outputs:
       image: ${{ steps.image.outputs.image }}
       digest: ${{ steps.build.outputs.digest }}
-      version: ${{ steps.meta.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
     
     steps:
       - name: Checkout repository
@@ -142,7 +142,7 @@ jobs:
 
       - name: Output image
         id: image
-        run: echo "image=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.meta.outputs.version }}" >> $GITHUB_OUTPUT
+        run: echo "image=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
 
   update-deployment:
     runs-on: ubuntu-latest
