@@ -61,7 +61,7 @@ services:
 
   frontend:
     # Use versioned Docker image from GitHub Container Registry
-    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:master-e5878ad}
+    image: ${FRONTEND_IMAGE:-ghcr.io/tallmancycles/challenge/frontend:master-f808209}
     container_name: ${FRONTEND_CONTAINER_NAME:-garmin-challenge-frontend}
     environment:
       - VITE_APP_API_ENDPOINT=${VITE_APP_API_ENDPOINT:-http://localhost:8080}
