@@ -10,15 +10,18 @@ public class FitFilesController : ControllerBase
     private readonly ILogger<FitFilesController> _logger;
     private readonly IConfiguration _configuration;
     private readonly IFitFileQueue _fitFileQueue;
+    private readonly IFitFileReprocessingService _reprocessingService;
 
     public FitFilesController(
         ILogger<FitFilesController> logger, 
         IConfiguration configuration,
-        IFitFileQueue fitFileQueue)
+        IFitFileQueue fitFileQueue,
+        IFitFileReprocessingService reprocessingService)
     {
         _logger = logger;
         _configuration = configuration;
         _fitFileQueue = fitFileQueue;
+        _reprocessingService = reprocessingService;
     }
 
     [HttpPost("upload")]
@@ -102,6 +105,39 @@ public class FitFilesController : ControllerBase
         {
             _logger.LogError(ex, "Error listing fit files");
             return StatusCode(500, "An error occurred while listing files");
+        }
+    }
+
+    [HttpPost("reprocess-all")]
+    public async Task<IActionResult> ReprocessAllFitFiles([FromHeader(Name = "X-API-Secret")] string? secretKey)
+    {
+        try
+        {
+            // Validate secret key
+            var expectedSecretKey = _configuration["FitFileUpload:SecretKey"];
+            if (string.IsNullOrEmpty(expectedSecretKey) || secretKey != expectedSecretKey)
+            {
+                return Unauthorized("Invalid API secret key");
+            }
+
+            _logger.LogInformation("Starting reprocessing of all unprocessed fit files");
+
+            // Reprocess all unprocessed fit files
+            var processedCount = await _reprocessingService.ReprocessUnprocessedFitFilesAsync();
+
+            _logger.LogInformation("Completed reprocessing. Processed {count} fit files", processedCount);
+
+            return Ok(new 
+            { 
+                message = "Fit file reprocessing completed successfully",
+                processedCount = processedCount,
+                processedAt = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reprocessing fit files");
+            return StatusCode(500, "An error occurred while reprocessing fit files");
         }
     }
 }
