@@ -499,6 +499,7 @@ public class FitFileProcessingService : IFitFileProcessingService
         {
             _logger.LogError(ex, "Error creating Activity from FitFile {fileName} for user {userId}", 
                 fitFileActivity.FileName, user.Id);
+            throw;
         }
     }
 }
