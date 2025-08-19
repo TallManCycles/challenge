@@ -486,7 +486,10 @@ public class FitFileProcessingService : IFitFileProcessingService
                 AveragePower = fitFileActivity.AveragePower,
                 MaxPower = fitFileActivity.MaxPower,
                 AverageCadence = fitFileActivity.AverageCadence,
-                CreatedAt = System.DateTime.UtcNow
+                CreatedAt = System.DateTime.UtcNow,
+                MovingTime = fitFileActivity.DurationMinutes * 60,
+                Distance = (decimal)fitFileActivity.DistanceKm,
+                ElevationGain = (decimal)fitFileActivity.ElevationGainM
             };
 
             _context.Activities.Add(activity);
