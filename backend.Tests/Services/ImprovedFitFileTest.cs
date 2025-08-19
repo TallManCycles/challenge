@@ -90,7 +90,7 @@ public class ImprovedFitFileTest
             Console.WriteLine("\n=== EXTRACTED ACTIVITY DATA ===");
             Console.WriteLine($"Activity Name: {activity.ActivityName}");
             Console.WriteLine($"Distance: {activity.DistanceKm} km");
-            Console.WriteLine($"Duration: {activity.DurationMinutes} minutes");
+            Console.WriteLine($"Duration: {activity.DurationSeconds} seconds");
             Console.WriteLine($"Elevation: {activity.ElevationGainM} m");
             Console.WriteLine($"Activity Type: {activity.ActivityType}");
             Console.WriteLine($"Source: {activity.Source}");
@@ -98,8 +98,8 @@ public class ImprovedFitFileTest
             // Validate specific values we know from debug output
             Assert.That(activity.DistanceKm, Is.EqualTo(20.328439453125).Within(0.001), 
                 "Distance should match the known FIT file value");
-            Assert.That(activity.DurationMinutes, Is.EqualTo(38).Within(1), 
-                "Duration should be approximately 38 minutes (allowing for rounding)");
+            Assert.That(activity.DurationSeconds, Is.EqualTo(2280).Within(1), 
+                "Duration should be approximately 2280 seconds (allowing for rounding)");
             Assert.That(activity.ElevationGainM, Is.EqualTo(33).Within(1), 
                 "Elevation should match the known FIT file value");
             Assert.That(activity.ActivityType, Is.EqualTo("cycling"));

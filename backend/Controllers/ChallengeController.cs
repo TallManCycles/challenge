@@ -338,7 +338,7 @@ public class ChallengeController : ControllerBase
                 ActivityName = a.ActivityName,
                 Distance = (decimal)a.DistanceKm,
                 ElevationGain = (decimal)a.ElevationGainM,
-                MovingTime = a.DurationMinutes,
+                MovingTime = a.DurationSeconds,
                 ActivityDate = a.ActivityDate,
                 LikeCount = _context.ActivityLikes.Count(al => al.ActivityId == a.Id),
                 IsLikedByCurrentUser = _context.ActivityLikes.Any(al => al.ActivityId == a.Id && al.UserId == currentUserId)
@@ -454,8 +454,8 @@ public class ChallengeController : ControllerBase
                             dayValue += (decimal)activity.ElevationGainM;
                             break;
                         case ChallengeType.Time:
-                            dayValue += activity.DurationMinutes / 60m; // Convert minutes to hours
-                             break;
+                            dayValue += activity.DurationSeconds / 3600m; // Convert seconds to hours
+                            break;
                     }
                 }
 

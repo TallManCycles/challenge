@@ -459,6 +459,7 @@ public class FitFileProcessingService : IFitFileProcessingService
                 .FirstOrDefaultAsync(a => a.UserId == user.Id && 
                                         a.ExternalId == fitFileActivity.FileName);
             
+            
             if (existingActivity != null)
             {
                 _logger.LogInformation("Activity already exists for FitFile: {fileName}, skipping creation", fitFileActivity.FileName);
@@ -475,7 +476,7 @@ public class FitFileProcessingService : IFitFileProcessingService
                 Source = "FitFile", // Mark as coming from FitFile
                 DistanceKm = fitFileActivity.DistanceKm,
                 ElevationGainM = fitFileActivity.ElevationGainM,
-                DurationMinutes = fitFileActivity.DurationMinutes,
+                DurationSeconds = fitFileActivity.DurationMinutes * 60,
                 StartTime = fitFileActivity.StartTime,
                 EndTime = fitFileActivity.EndTime,
                 ActivityDate = fitFileActivity.ActivityDate,

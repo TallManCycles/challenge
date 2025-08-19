@@ -64,7 +64,7 @@ namespace backend.Migrations
                     b.Property<double>("DistanceKm")
                         .HasColumnType("double precision");
 
-                    b.Property<int>("DurationMinutes")
+                    b.Property<int>("DurationSeconds")
                         .HasColumnType("integer");
 
                     b.Property<decimal>("ElevationGain")
@@ -113,7 +113,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Activities");
+                    b.ToTable("Activities", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.ActivityLike", b =>
@@ -140,7 +140,7 @@ namespace backend.Migrations
                     b.HasIndex("ActivityId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("ActivityLikes");
+                    b.ToTable("ActivityLikes", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Challenge", b =>
@@ -194,7 +194,7 @@ namespace backend.Migrations
 
                     b.HasIndex("CreatedById");
 
-                    b.ToTable("Challenges");
+                    b.ToTable("Challenges", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.ChallengeParticipant", b =>
@@ -246,7 +246,7 @@ namespace backend.Migrations
                     b.HasIndex("ChallengeId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("ChallengeParticipants");
+                    b.ToTable("ChallengeParticipants", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.FitFileActivity", b =>
@@ -356,7 +356,7 @@ namespace backend.Migrations
 
                     b.HasIndex("ZwiftUserId");
 
-                    b.ToTable("FitFileActivities");
+                    b.ToTable("FitFileActivities", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.GarminActivity", b =>
@@ -449,7 +449,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId", "ActivityType");
 
-                    b.ToTable("GarminActivities");
+                    b.ToTable("GarminActivities", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.GarminOAuthToken", b =>
@@ -510,7 +510,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("GarminOAuthTokens");
+                    b.ToTable("GarminOAuthTokens", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.GarminWebhookPayload", b =>
@@ -557,7 +557,7 @@ namespace backend.Migrations
 
                     b.HasIndex("WebhookType");
 
-                    b.ToTable("GarminWebhookPayloads");
+                    b.ToTable("GarminWebhookPayloads", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Quote", b =>
@@ -596,7 +596,7 @@ namespace backend.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.ToTable("Quotes");
+                    b.ToTable("Quotes", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.User", b =>
@@ -668,7 +668,7 @@ namespace backend.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.Activity", b =>

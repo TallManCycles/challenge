@@ -98,7 +98,7 @@ public class AuthController : ControllerBase
         try
         {
             // Find user
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == request.Email.ToLower());
             
             // Always verify password even if user doesn't exist to prevent timing attacks
             var passwordValid = user != null && VerifyPassword(request.Password, user.PasswordHash);
@@ -377,7 +377,7 @@ public class AuthController : ControllerBase
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Username)
             }),
-            Expires = DateTime.UtcNow.AddHours(24),
+            Expires = DateTime.UtcNow.AddHours(72),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
 

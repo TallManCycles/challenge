@@ -328,7 +328,7 @@ public class FitFileReprocessingService : IFitFileReprocessingService
                 Source = "FitFile", // Mark as coming from FitFile
                 DistanceKm = fitFileActivity.DistanceKm,
                 ElevationGainM = fitFileActivity.ElevationGainM,
-                DurationMinutes = fitFileActivity.DurationMinutes,
+                DurationSeconds = fitFileActivity.DurationMinutes * 60,
                 StartTime = fitFileActivity.StartTime,
                 EndTime = fitFileActivity.EndTime,
                 ActivityDate = fitFileActivity.ActivityDate,
