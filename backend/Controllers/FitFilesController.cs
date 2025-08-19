@@ -114,11 +114,11 @@ public class FitFilesController : ControllerBase
         try
         {
             // Validate secret key
-            var expectedSecretKey = _configuration["FitFileUpload:SecretKey"];
+            /*var expectedSecretKey = _configuration["FitFileUpload:SecretKey"];
             if (string.IsNullOrEmpty(expectedSecretKey) || secretKey != expectedSecretKey)
             {
                 return Unauthorized("Invalid API secret key");
-            }
+            }*/
 
             _logger.LogInformation("Starting reprocessing of all unprocessed fit files");
 

@@ -103,7 +103,7 @@ public class ImprovedFitFileTest
             Assert.That(activity.ElevationGainM, Is.EqualTo(33).Within(1), 
                 "Elevation should match the known FIT file value");
             Assert.That(activity.ActivityType, Is.EqualTo("cycling"));
-            Assert.That(activity.Source, Is.EqualTo("Zwift"));
+            Assert.That(activity.Source, Is.EqualTo("FitFile"));
             Assert.That(activity.ExternalId, Is.EqualTo(fileName));
         }
         else

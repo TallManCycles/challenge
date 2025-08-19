@@ -239,7 +239,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
 
         // Get Garmin activities
         var garminActivities = await _context.GarminActivities
-            .Where(a => a.UserId == userId)
+            .Where(a => a.UserId == userId && a.DurationInSeconds > 0)
             .OrderByDescending(a => a.StartTime)
             .ToListAsync();
 
@@ -249,7 +249,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
         if (includeZwiftActivities)
         {
             var fitFileActivities = await _context.FitFileActivities
-                .Where(f => f.UserId == userId && f.Status == FitFileProcessingStatus.Processed)
+                .Where(f => f.UserId == userId && f.Status == FitFileProcessingStatus.Processed && f.DurationMinutes > 0)
                 .OrderByDescending(f => f.StartTime)
                 .ToListAsync();
 
