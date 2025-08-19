@@ -48,6 +48,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
           tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
             # use git short commit for master branch
             type=sha,prefix={{branch}}-,enable={{is_default_branch}}
@@ -112,7 +113,8 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
           tags: |
-            # set version from VERSION file as default for master branch (instead of latest)
+            type=raw,value=latest,enable={{is_default_branch}}
+            # set version from VERSION file as default for master branch
             type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
             # use git short commit for master branch
             type=sha,prefix={{branch}}-,enable={{is_default_branch}}

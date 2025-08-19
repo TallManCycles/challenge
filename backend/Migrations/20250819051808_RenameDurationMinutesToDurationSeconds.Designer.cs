@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using backend.Data;
@@ -11,9 +12,11 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250819051808_RenameDurationMinutesToDurationSeconds")]
+    partial class RenameDurationMinutesToDurationSeconds
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -113,7 +116,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Activities", (string)null);
+                    b.ToTable("Activities");
                 });
 
             modelBuilder.Entity("backend.Models.ActivityLike", b =>
@@ -140,7 +143,7 @@ namespace backend.Migrations
                     b.HasIndex("ActivityId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("ActivityLikes", (string)null);
+                    b.ToTable("ActivityLikes");
                 });
 
             modelBuilder.Entity("backend.Models.Challenge", b =>
@@ -194,7 +197,7 @@ namespace backend.Migrations
 
                     b.HasIndex("CreatedById");
 
-                    b.ToTable("Challenges", (string)null);
+                    b.ToTable("Challenges");
                 });
 
             modelBuilder.Entity("backend.Models.ChallengeParticipant", b =>
@@ -246,7 +249,7 @@ namespace backend.Migrations
                     b.HasIndex("ChallengeId", "UserId")
                         .IsUnique();
 
-                    b.ToTable("ChallengeParticipants", (string)null);
+                    b.ToTable("ChallengeParticipants");
                 });
 
             modelBuilder.Entity("backend.Models.FitFileActivity", b =>
@@ -356,7 +359,7 @@ namespace backend.Migrations
 
                     b.HasIndex("ZwiftUserId");
 
-                    b.ToTable("FitFileActivities", (string)null);
+                    b.ToTable("FitFileActivities");
                 });
 
             modelBuilder.Entity("backend.Models.GarminActivity", b =>
@@ -449,7 +452,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId", "ActivityType");
 
-                    b.ToTable("GarminActivities", (string)null);
+                    b.ToTable("GarminActivities");
                 });
 
             modelBuilder.Entity("backend.Models.GarminOAuthToken", b =>
@@ -510,7 +513,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("GarminOAuthTokens", (string)null);
+                    b.ToTable("GarminOAuthTokens");
                 });
 
             modelBuilder.Entity("backend.Models.GarminWebhookPayload", b =>
@@ -557,7 +560,7 @@ namespace backend.Migrations
 
                     b.HasIndex("WebhookType");
 
-                    b.ToTable("GarminWebhookPayloads", (string)null);
+                    b.ToTable("GarminWebhookPayloads");
                 });
 
             modelBuilder.Entity("backend.Models.Quote", b =>
@@ -596,7 +599,7 @@ namespace backend.Migrations
 
                     b.HasIndex("IsActive");
 
-                    b.ToTable("Quotes", (string)null);
+                    b.ToTable("Quotes");
                 });
 
             modelBuilder.Entity("backend.Models.User", b =>
@@ -668,7 +671,7 @@ namespace backend.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("backend.Models.Activity", b =>

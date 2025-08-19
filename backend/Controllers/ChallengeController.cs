@@ -336,9 +336,9 @@ public class ChallengeController : ControllerBase
                 Username = a.User.Username,
                 FullName = a.User.FullName,
                 ActivityName = a.ActivityName,
-                Distance = a.Distance,
-                ElevationGain = a.ElevationGain,
-                MovingTime = a.MovingTime,
+                Distance = (decimal)a.DistanceKm,
+                ElevationGain = (decimal)a.ElevationGainM,
+                MovingTime = a.DurationSeconds,
                 ActivityDate = a.ActivityDate,
                 LikeCount = _context.ActivityLikes.Count(al => al.ActivityId == a.Id),
                 IsLikedByCurrentUser = _context.ActivityLikes.Any(al => al.ActivityId == a.Id && al.UserId == currentUserId)
@@ -448,13 +448,13 @@ public class ChallengeController : ControllerBase
                     switch (challenge.ChallengeType)
                     {
                         case ChallengeType.Distance:
-                            dayValue += activity.Distance;
+                            dayValue += (decimal)activity.DistanceKm;
                             break;
                         case ChallengeType.Elevation:
-                            dayValue += activity.ElevationGain;
+                            dayValue += (decimal)activity.ElevationGainM;
                             break;
                         case ChallengeType.Time:
-                            dayValue += activity.MovingTime / 3600m; // Convert seconds to hours
+                            dayValue += activity.DurationSeconds / 3600m; // Convert seconds to hours
                             break;
                     }
                 }

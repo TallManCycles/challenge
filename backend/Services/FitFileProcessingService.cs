@@ -106,6 +106,7 @@ public class FitFileProcessingService : IFitFileProcessingService
             if (user != null && status == FitFileProcessingStatus.Processed)
             {
                 await ProcessChallengesForFitFileAsync(user, fitFileActivity);
+                await CreateActivityFromFitFileAsync(user, fitFileActivity);
             }
 
             return true;
@@ -409,6 +410,15 @@ public class FitFileProcessingService : IFitFileProcessingService
                 {
                     participation.LastUpdated = System.DateTime.UtcNow;
                     
+                    // Update legacy CurrentTotal field for backward compatibility
+                    participation.CurrentTotal = challenge.ChallengeType switch
+                    {
+                        ChallengeType.Distance => (decimal)participation.CurrentDistance,
+                        ChallengeType.Elevation => (decimal)participation.CurrentElevation,
+                        ChallengeType.Time => participation.CurrentTime / 60m, // Convert minutes to hours for display
+                        _ => 0
+                    };
+                    
                     // Check if challenge is completed
                     bool isCompleted = challenge.ChallengeType switch
                     {
@@ -437,6 +447,63 @@ public class FitFileProcessingService : IFitFileProcessingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing challenges for user {userId} and fit file {fileName}", user.Id, fitFileActivity.FileName);
+        }
+    }
+
+    private async Task CreateActivityFromFitFileAsync(User user, FitFileActivity fitFileActivity)
+    {
+        try
+        {
+            // Check if an Activity record already exists for this FitFile
+            var existingActivity = await _context.Activities
+                .FirstOrDefaultAsync(a => a.UserId == user.Id && 
+                                        a.ExternalId == fitFileActivity.FileName);
+            
+            
+            if (existingActivity != null)
+            {
+                _logger.LogInformation("Activity already exists for FitFile: {fileName}, skipping creation", fitFileActivity.FileName);
+                return;
+            }
+
+            // Create Activity record from FitFileActivity
+            var activity = new backend.Models.Activity
+            {
+                UserId = user.Id,
+                ExternalId = fitFileActivity.FileName, // Use filename as external ID to link back to FitFile
+                ActivityName = fitFileActivity.ActivityName,
+                ActivityType = fitFileActivity.ActivityType,
+                Source = "FitFile", // Mark as coming from FitFile
+                DistanceKm = fitFileActivity.DistanceKm,
+                ElevationGainM = fitFileActivity.ElevationGainM,
+                DurationSeconds = fitFileActivity.DurationMinutes * 60,
+                StartTime = fitFileActivity.StartTime,
+                EndTime = fitFileActivity.EndTime,
+                ActivityDate = fitFileActivity.ActivityDate,
+                AverageSpeed = fitFileActivity.AverageSpeed,
+                MaxSpeed = fitFileActivity.MaxSpeed,
+                AverageHeartRate = fitFileActivity.AverageHeartRate,
+                MaxHeartRate = fitFileActivity.MaxHeartRate,
+                AveragePower = fitFileActivity.AveragePower,
+                MaxPower = fitFileActivity.MaxPower,
+                AverageCadence = fitFileActivity.AverageCadence,
+                CreatedAt = System.DateTime.UtcNow,
+                MovingTime = fitFileActivity.DurationMinutes * 60,
+                Distance = (decimal)fitFileActivity.DistanceKm,
+                ElevationGain = (decimal)fitFileActivity.ElevationGainM
+            };
+
+            _context.Activities.Add(activity);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Created Activity record from FitFile: {fileName} for user {userId}", 
+                fitFileActivity.FileName, user.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating Activity from FitFile {fileName} for user {userId}", 
+                fitFileActivity.FileName, user.Id);
+            throw;
         }
     }
 }

@@ -91,7 +91,7 @@ public class FitFileParsingDebugTest
         
         foreach (var activity in activities)
         {
-            Console.WriteLine($"Activity: {activity.ActivityName}, Distance: {activity.DistanceKm}km, Duration: {activity.DurationMinutes}min");
+            Console.WriteLine($"Activity: {activity.ActivityName}, Distance: {activity.DistanceKm}km, Duration: {activity.DurationSeconds}secs");
         }
         
         // Check all users to see if we have ZwiftUserId issues

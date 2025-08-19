@@ -27,7 +27,7 @@ public class Activity
     
     public double ElevationGainM { get; set; }
     
-    public int DurationMinutes { get; set; }
+    public int DurationSeconds { get; set; }
     
     // Timing
     public DateTime StartTime { get; set; }
@@ -54,25 +54,21 @@ public class Activity
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     
-    // Legacy fields for backward compatibility
-    [Obsolete("Use DistanceKm instead")]
     public decimal Distance 
     { 
         get => (decimal)DistanceKm; 
         set => DistanceKm = (double)value; 
     }
     
-    [Obsolete("Use ElevationGainM instead")]
     public decimal ElevationGain 
     { 
         get => (decimal)ElevationGainM; 
         set => ElevationGainM = (double)value; 
     }
     
-    [Obsolete("Use DurationMinutes instead")]
     public int MovingTime 
     { 
-        get => DurationMinutes; 
-        set => DurationMinutes = value; 
+        get => DurationSeconds; 
+        set => DurationSeconds = value; 
     }
 }
