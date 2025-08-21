@@ -46,11 +46,11 @@ public class ChallengeController : ControllerBase
                 CreatedByUsername = c.CreatedBy.Username,
                 ChallengeType = c.ChallengeType,
                 ChallengeTypeName = c.ChallengeType.ToString(),
-                StartDate = c.StartDate,
-                EndDate = c.EndDate,
+                StartDate = c.StartDate.ToUniversalTime(),
+                EndDate = c.EndDate.ToUniversalTime(),
                 IsActive = c.IsActive,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
+                CreatedAt = c.CreatedAt.ToUniversalTime(),
+                UpdatedAt = c.UpdatedAt.ToUniversalTime(),
                 ParticipantCount = c.Participants.Count,
                 IsUserParticipating = c.Participants.Any(p => p.UserId == currentUserId)
             })
@@ -79,11 +79,11 @@ public class ChallengeController : ControllerBase
                 CreatedByUsername = c.CreatedBy.Username,
                 ChallengeType = c.ChallengeType,
                 ChallengeTypeName = c.ChallengeType.ToString(),
-                StartDate = c.StartDate,
-                EndDate = c.EndDate,
+                StartDate = c.StartDate.ToUniversalTime(),
+                EndDate = c.EndDate.ToUniversalTime(),
                 IsActive = c.IsActive,
-                CreatedAt = c.CreatedAt,
-                UpdatedAt = c.UpdatedAt,
+                CreatedAt = c.CreatedAt.ToUniversalTime(),
+                UpdatedAt = c.UpdatedAt.ToUniversalTime(),
                 ParticipantCount = c.Participants.Count,
                 IsUserParticipating = c.Participants.Any(p => p.UserId == currentUserId),
                 Participants = c.Participants.Select(p => new ChallengeParticipantResponse
@@ -92,9 +92,9 @@ public class ChallengeController : ControllerBase
                     UserId = p.UserId,
                     Username = p.User.Username,
                     FullName = p.User.FullName,
-                    JoinedAt = p.JoinedAt,
+                    JoinedAt = p.JoinedAt.ToUniversalTime(),
                     CurrentTotal = p.CurrentTotal,
-                    LastActivityDate = p.LastActivityDate,
+                    LastActivityDate = p.LastActivityDate.Value.ToUniversalTime(),
                     IsCurrentUser = p.UserId == currentUserId
                 }).ToList()
             })
@@ -339,7 +339,7 @@ public class ChallengeController : ControllerBase
                 Distance = a.Distance,
                 ElevationGain = a.ElevationGain,
                 MovingTime = a.MovingTime,
-                ActivityDate = a.ActivityDate,
+                ActivityDate = a.ActivityDate.ToUniversalTime(),
                 LikeCount = _context.ActivityLikes.Count(al => al.ActivityId == a.Id),
                 IsLikedByCurrentUser = _context.ActivityLikes.Any(al => al.ActivityId == a.Id && al.UserId == currentUserId)
             })
@@ -372,7 +372,7 @@ public class ChallengeController : ControllerBase
                 FullName = cp.User.FullName,
                 CurrentTotal = cp.CurrentTotal,
                 IsCurrentUser = cp.UserId == currentUserId,
-                LastActivityDate = cp.LastActivityDate
+                LastActivityDate = cp.LastActivityDate.Value.ToUniversalTime()
             })
             .ToListAsync();
 
@@ -409,8 +409,8 @@ public class ChallengeController : ControllerBase
             return Ok(new ChallengeDailyProgressResponse
             {
                 ChallengeId = id,
-                StartDate = challenge.StartDate,
-                EndDate = challenge.EndDate,
+                StartDate = challenge.StartDate.ToUniversalTime(),
+                EndDate = challenge.EndDate.ToUniversalTime(),
                 Participants = new List<ParticipantDailyProgress>()
             });
         }
@@ -462,7 +462,7 @@ public class ChallengeController : ControllerBase
                 cumulativeTotal += dayValue;
                 dailyProgress.Add(new DailyProgressEntry
                 {
-                    Date = date,
+                    Date = DateTime.SpecifyKind(date, DateTimeKind.Utc),
                     DayValue = dayValue,
                     CumulativeValue = cumulativeTotal
                 });
@@ -481,8 +481,8 @@ public class ChallengeController : ControllerBase
         return Ok(new ChallengeDailyProgressResponse
         {
             ChallengeId = id,
-            StartDate = challenge.StartDate,
-            EndDate = challenge.EndDate,
+            StartDate = challenge.StartDate.ToUniversalTime(),
+            EndDate = challenge.EndDate.ToUniversalTime(),
             ChallengeType = challenge.ChallengeType,
             ChallengeTypeName = challenge.ChallengeType.ToString(),
             Participants = participantProgressList
