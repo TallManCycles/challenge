@@ -159,12 +159,20 @@
                 <h4 class="text-lg font-semibold text-white mb-1">{{ challenge.title }}</h4>
                 <p class="text-gray-400 text-sm">{{ challenge.description || 'No description' }}</p>
               </div>
-              <span
-                class="px-2 py-1 rounded-full text-xs font-medium"
-                :class="getTypeColorClass(challenge.challengeTypeName)"
-              >
-                {{ challenge.challengeTypeName }}
-              </span>
+              <div class="flex items-center space-x-2">
+                <span
+                  v-if="isChallengeUpcoming(challenge)"
+                  class="px-2 py-1 bg-yellow-600 text-white rounded-full text-xs font-medium"
+                >
+                  Upcoming
+                </span>
+                <span
+                  class="px-2 py-1 rounded-full text-xs font-medium"
+                  :class="getTypeColorClass(challenge.challengeTypeName)"
+                >
+                  {{ challenge.challengeTypeName }}
+                </span>
+              </div>
             </div>
 
             <!-- Challenge Stats -->
@@ -239,6 +247,12 @@
             <div class="flex-1">
               <div class="flex items-center space-x-3 mb-2">
                 <h4 class="text-lg font-medium text-white">{{ challenge.title }}</h4>
+                <span
+                  v-if="isChallengeUpcoming(challenge)"
+                  class="px-2 py-1 bg-yellow-600 text-white rounded-full text-xs font-medium"
+                >
+                  Upcoming
+                </span>
                 <span
                   class="px-2 py-1 rounded-full text-xs font-medium"
                   :class="getTypeColorClass(challenge.challengeTypeName)"
@@ -386,6 +400,10 @@ const getDaysRemaining = (endDate: string) => {
 
 const isDateInFuture = (dateString: string) => {
   return new Date(dateString) > new Date()
+}
+
+const isChallengeUpcoming = (challenge: Challenge) => {
+  return new Date(challenge.startDate) > new Date()
 }
 
 onMounted(() => {
