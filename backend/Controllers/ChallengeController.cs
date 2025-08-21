@@ -145,6 +145,23 @@ public class ChallengeController : ControllerBase
         _context.Challenges.Add(challenge);
         await _context.SaveChangesAsync();
 
+        // Automatically add creator as participant with calculated initial totals
+        var initialTotals = await CalculateInitialTotalsForUser(currentUserId, challenge);
+        var creatorParticipant = new ChallengeParticipant
+        {
+            ChallengeId = challenge.Id,
+            UserId = currentUserId,
+            JoinedAt = DateTime.UtcNow,
+            CurrentTotal = initialTotals.CurrentTotal,
+            CurrentDistance = initialTotals.CurrentDistance,
+            CurrentElevation = initialTotals.CurrentElevation,
+            CurrentTime = initialTotals.CurrentTime,
+            LastActivityDate = initialTotals.LastActivityDate
+        };
+
+        _context.ChallengeParticipants.Add(creatorParticipant);
+        await _context.SaveChangesAsync();
+
         var response = new ChallengeResponse
         {
             Id = challenge.Id,
@@ -159,8 +176,8 @@ public class ChallengeController : ControllerBase
             IsActive = challenge.IsActive,
             CreatedAt = challenge.CreatedAt,
             UpdatedAt = challenge.UpdatedAt,
-            ParticipantCount = 0,
-            IsUserParticipating = false
+            ParticipantCount = 1,
+            IsUserParticipating = true
         };
 
         return CreatedAtAction(nameof(GetChallenge), new { id = challenge.Id }, response);
@@ -277,13 +294,19 @@ public class ChallengeController : ControllerBase
             return BadRequest(new { error = "Already participating in this challenge" });
         }
 
+        // Calculate initial current totals based on existing activities
+        var initialTotals = await CalculateInitialTotalsForUser(currentUserId, challenge);
+
         var participant = new ChallengeParticipant
         {
             ChallengeId = id,
             UserId = currentUserId,
             JoinedAt = DateTime.UtcNow,
-            CurrentTotal = 0,
-            LastActivityDate = null
+            CurrentTotal = initialTotals.CurrentTotal,
+            CurrentDistance = initialTotals.CurrentDistance,
+            CurrentElevation = initialTotals.CurrentElevation,
+            CurrentTime = initialTotals.CurrentTime,
+            LastActivityDate = initialTotals.LastActivityDate
         };
 
         _context.ChallengeParticipants.Add(participant);
@@ -326,7 +349,8 @@ public class ChallengeController : ControllerBase
             .Include(a => a.User)
             .Where(a => a.User.ChallengeParticipations.Any(cp => cp.ChallengeId == id) && 
                        a.ActivityDate >= challenge.StartDate && 
-                       a.ActivityDate <= challenge.EndDate)
+                       a.ActivityDate <= challenge.EndDate
+                       && a.MovingTime > 0)
             .OrderByDescending(a => a.ActivityDate)
             .Take(limit)
             .Select(a => new ChallengeActivityResponse
@@ -501,5 +525,115 @@ public class ChallengeController : ControllerBase
         }
         
         return dates;
+    }
+
+    private async Task<(decimal CurrentTotal, double CurrentDistance, double CurrentElevation, int CurrentTime, DateTime? LastActivityDate)> CalculateInitialTotalsForUser(int userId, Challenge challenge)
+    {
+        // Get all activities for the user within the challenge date range
+        var activities = await _context.Activities
+            .Where(a => a.UserId == userId && 
+                       a.ActivityDate >= challenge.StartDate && 
+                       a.ActivityDate <= challenge.EndDate)
+            .ToListAsync();
+
+        // Get existing Garmin activity IDs to avoid duplicates
+        var existingGarminIds = activities
+            .Where(a => !string.IsNullOrEmpty(a.GarminActivityId))
+            .Select(a => a.GarminActivityId!)
+            .ToHashSet();
+
+        // Get processed Garmin activities that might not be in Activities table yet
+        var allGarminActivities = await _context.GarminActivities
+            .Where(ga => ga.UserId == userId && 
+                        ga.IsProcessed && 
+                        ga.StartTime >= challenge.StartDate && 
+                        ga.StartTime <= challenge.EndDate)
+            .ToListAsync();
+
+        // Filter out Garmin activities that already exist in Activities table
+        var garminActivities = allGarminActivities
+            .Where(ga => !existingGarminIds.Contains(ga.ActivityId ?? "") && 
+                        !existingGarminIds.Contains(ga.SummaryId))
+            .ToList();
+
+        double totalDistance = 0;
+        double totalElevation = 0;
+        int totalTimeMinutes = 0;
+        DateTime? lastActivityDate = null;
+
+        // Process regular activities
+        foreach (var activity in activities)
+        {
+            totalDistance += activity.DistanceKm;
+            totalElevation += activity.ElevationGainM;
+            totalTimeMinutes += activity.DurationSeconds / 60; // Convert seconds to minutes
+
+            if (lastActivityDate == null || activity.ActivityDate > lastActivityDate)
+            {
+                lastActivityDate = activity.ActivityDate;
+            }
+        }
+
+        // Process Garmin activities that aren't yet in Activities table
+        foreach (var garminActivity in garminActivities)
+        {
+            if (IsCyclingActivity(garminActivity.ActivityType))
+            {
+                if (garminActivity.DistanceInMeters.HasValue)
+                {
+                    totalDistance += garminActivity.DistanceInMeters.Value / 1000.0; // Convert meters to km
+                }
+
+                if (garminActivity.TotalElevationGainInMeters.HasValue)
+                {
+                    totalElevation += garminActivity.TotalElevationGainInMeters.Value;
+                }
+
+                totalTimeMinutes += garminActivity.DurationInSeconds / 60; // Convert seconds to minutes
+
+                if (lastActivityDate == null || garminActivity.StartTime > lastActivityDate)
+                {
+                    lastActivityDate = garminActivity.StartTime;
+                }
+            }
+        }
+
+        // Calculate CurrentTotal based on challenge type
+        decimal currentTotal = challenge.ChallengeType switch
+        {
+            ChallengeType.Distance => (decimal)totalDistance,
+            ChallengeType.Elevation => (decimal)totalElevation,
+            ChallengeType.Time => totalTimeMinutes / 60m, // Convert minutes to hours for display
+            _ => 0
+        };
+
+        await _logger.LogInfoAsync($"Calculated initial totals for user {userId} in challenge {challenge.Id}: Distance={totalDistance:F2}km, Elevation={totalElevation:F0}m, Time={totalTimeMinutes}min, CurrentTotal={currentTotal}");
+
+        return (currentTotal, totalDistance, totalElevation, totalTimeMinutes, lastActivityDate);
+    }
+
+    private bool IsCyclingActivity(GarminActivityType activityType)
+    {
+        return activityType switch
+        {
+            GarminActivityType.CYCLING => true,
+            GarminActivityType.BMX => true,
+            GarminActivityType.CYCLOCROSS => true,
+            GarminActivityType.DOWNHILL_BIKING => true,
+            GarminActivityType.E_BIKE_FITNESS => true,
+            GarminActivityType.E_BIKE_MOUNTAIN => true,
+            GarminActivityType.E_ENDURO_MTB => true,
+            GarminActivityType.ENDURO_MTB => true,
+            GarminActivityType.GRAVEL_CYCLING => true,
+            GarminActivityType.INDOOR_CYCLING => true,
+            GarminActivityType.MOUNTAIN_BIKING => true,
+            GarminActivityType.RECUMBENT_CYCLING => true,
+            GarminActivityType.ROAD_BIKING => true,
+            GarminActivityType.TRACK_CYCLING => true,
+            GarminActivityType.VIRTUAL_RIDE => true,
+            GarminActivityType.HANDCYCLING => true,
+            GarminActivityType.INDOOR_HANDCYCLING => true,
+            _ => false
+        };
     }
 }
