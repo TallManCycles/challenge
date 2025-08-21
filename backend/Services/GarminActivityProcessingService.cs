@@ -239,7 +239,7 @@ public class GarminActivityProcessingService : IGarminActivityProcessingService
 
         // Get Garmin activities
         var garminActivities = await _context.GarminActivities
-            .Where(a => a.UserId == userId && a.DurationInSeconds > 0 && !a.SummaryId.Contains("detail"))
+            .Where(a => a.UserId == userId && a.DurationInSeconds > 0 && !a.SummaryId.Contains("detail") && a.DurationInSeconds > 0)
             .OrderByDescending(a => a.StartTime)
             .ToListAsync();
 
