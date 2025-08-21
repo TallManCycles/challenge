@@ -94,7 +94,7 @@ public class ChallengeController : ControllerBase
                     FullName = p.User.FullName,
                     JoinedAt = p.JoinedAt.ToUniversalTime(),
                     CurrentTotal = p.CurrentTotal,
-                    LastActivityDate = p.LastActivityDate.Value.ToUniversalTime(),
+                    LastActivityDate = p.LastActivityDate.HasValue ? p.LastActivityDate.Value.ToUniversalTime() : null,
                     IsCurrentUser = p.UserId == currentUserId
                 }).ToList()
             })
@@ -372,7 +372,7 @@ public class ChallengeController : ControllerBase
                 FullName = cp.User.FullName,
                 CurrentTotal = cp.CurrentTotal,
                 IsCurrentUser = cp.UserId == currentUserId,
-                LastActivityDate = cp.LastActivityDate.Value.ToUniversalTime()
+                LastActivityDate = cp.LastActivityDate.HasValue ? cp.LastActivityDate.Value.ToUniversalTime() : null
             })
             .ToListAsync();
 
