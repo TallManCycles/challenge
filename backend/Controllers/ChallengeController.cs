@@ -340,10 +340,6 @@ public class ChallengeController : ControllerBase
                 ElevationGain = a.ElevationGain,
                 MovingTime = a.MovingTime,
                 ActivityDate = a.ActivityDate.ToUniversalTime(),
-                Distance = (decimal)a.DistanceKm,
-                ElevationGain = (decimal)a.ElevationGainM,
-                MovingTime = a.DurationSeconds,
-                ActivityDate = a.ActivityDate,
                 LikeCount = _context.ActivityLikes.Count(al => al.ActivityId == a.Id),
                 IsLikedByCurrentUser = _context.ActivityLikes.Any(al => al.ActivityId == a.Id && al.UserId == currentUserId)
             })
