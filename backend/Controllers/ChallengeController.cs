@@ -147,6 +147,9 @@ public class ChallengeController : ControllerBase
 
         // Automatically add creator as participant with calculated initial totals
         var initialTotals = await CalculateInitialTotalsForUser(currentUserId, challenge);
+
+        await _context.Database.BeginTransactionAsync();
+        
         var creatorParticipant = new ChallengeParticipant
         {
             ChallengeId = challenge.Id,
@@ -161,6 +164,9 @@ public class ChallengeController : ControllerBase
 
         _context.ChallengeParticipants.Add(creatorParticipant);
         await _context.SaveChangesAsync();
+        
+        await _context.Database.CommitTransactionAsync();
+
 
         var response = new ChallengeResponse
         {
