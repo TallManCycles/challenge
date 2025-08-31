@@ -79,9 +79,8 @@ services:
       start_period: 5s
 
   log-viewer:
-    build:
-      context: ./log-viewer
-      dockerfile: Dockerfile
+    # Use versioned Docker image from GitHub Container Registry
+    image: ${LOG_VIEWER_IMAGE:-ghcr.io/tallmancycles/challenge/log-viewer:latest}
     container_name: ${LOG_VIEWER_CONTAINER_NAME:-garmin-challenge-log-viewer}
     environment:
       - NODE_ENV=production

@@ -10,6 +10,7 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE_NAME: ${{ github.repository }}/backend
   FRONTEND_IMAGE_NAME: ${{ github.repository }}/frontend
+  LOG_VIEWER_IMAGE_NAME: ${{ github.repository }}/log-viewer
 
 jobs:
   build-backend:
@@ -145,9 +146,74 @@ jobs:
         id: image
         run: echo "image=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
 
+  build-log-viewer:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      digest: ${{ steps.build.outputs.digest }}
+      version: ${{ steps.version.outputs.version }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read version from VERSION file
+        id: version
+        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.LOG_VIEWER_IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.version }},enable={{is_default_branch}}
+            # use git short commit for master branch
+            type=sha,prefix={{branch}}-,enable={{is_default_branch}}
+            # set version tag for git tags (v1.0.0 -> 1.0.0)
+            type=ref,event=tag,prefix=
+            # remove 'v' prefix from version tags
+            type=ref,event=tag,prefix=,suffix=,pattern=v{{version}}
+            # set branch name for feature branches
+            type=ref,event=branch
+            # set pr number for pull requests
+            type=ref,event=pr
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/log-viewer
+          file: ./docker/log-viewer/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image
+        id: image
+        run: echo "image=${{ env.REGISTRY }}/${{ env.LOG_VIEWER_IMAGE_NAME }}:${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+
   update-deployment:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: [build-backend, build-frontend, build-log-viewer]
     if: github.ref == 'refs/heads/master' && github.event_name == 'push'
     permissions:
       contents: write
@@ -164,16 +230,19 @@ jobs:
           # Read version from VERSION file
           VERSION=$(cat VERSION)
           
-          # Extract backend and frontend versions from the metadata (fallback to VERSION file)
+          # Extract backend, frontend, and log-viewer versions from the metadata (fallback to VERSION file)
           BACKEND_VERSION=$(echo "${{ needs.build-backend.outputs.version }}" | head -1)
           FRONTEND_VERSION=$(echo "${{ needs.build-frontend.outputs.version }}" | head -1)
+          LOG_VIEWER_VERSION=$(echo "${{ needs.build-log-viewer.outputs.version }}" | head -1)
           
           # Use VERSION file version if metadata version is empty
           BACKEND_VERSION=${BACKEND_VERSION:-$VERSION}
           FRONTEND_VERSION=${FRONTEND_VERSION:-$VERSION}
+          LOG_VIEWER_VERSION=${LOG_VIEWER_VERSION:-$VERSION}
           
           echo "Using backend version: $BACKEND_VERSION"
           echo "Using frontend version: $FRONTEND_VERSION"
+          echo "Using log-viewer version: $LOG_VIEWER_VERSION"
           
           # Update backend image version in docker-compose.coolify.yml (replace the default fallback version)
           sed -i "s|ghcr.io/tallmancycles/challenge/backend:[0-9][0-9.]*}|ghcr.io/tallmancycles/challenge/backend:${BACKEND_VERSION}}|g" docker/docker-compose.coolify.yml
@@ -181,10 +250,14 @@ jobs:
           # Update frontend image version in docker-compose.coolify.yml (replace the default fallback version)
           sed -i "s|ghcr.io/tallmancycles/challenge/frontend:[0-9][0-9.]*}|ghcr.io/tallmancycles/challenge/frontend:${FRONTEND_VERSION}}|g" docker/docker-compose.coolify.yml
           
+          # Update log-viewer image version in docker-compose.coolify.yml (replace the default fallback version)
+          sed -i "s|ghcr.io/tallmancycles/challenge/log-viewer:[0-9][0-9.]*}|ghcr.io/tallmancycles/challenge/log-viewer:${LOG_VIEWER_VERSION}}|g" docker/docker-compose.coolify.yml
+          
           # Update .env.example with the new default versions (if file exists)
           if [ -f "docker/.env.example" ]; then
             sed -i "s|ghcr.io/tallmancycles/challenge/backend:[0-9][0-9.]*|ghcr.io/tallmancycles/challenge/backend:${BACKEND_VERSION}|g" docker/.env.example
             sed -i "s|ghcr.io/tallmancycles/challenge/frontend:[0-9][0-9.]*|ghcr.io/tallmancycles/challenge/frontend:${FRONTEND_VERSION}|g" docker/.env.example
+            sed -i "s|ghcr.io/tallmancycles/challenge/log-viewer:[0-9][0-9.]*|ghcr.io/tallmancycles/challenge/log-viewer:${LOG_VIEWER_VERSION}|g" docker/.env.example
             echo "Updated .env.example with new versions"
           fi
 
@@ -200,6 +273,7 @@ jobs:
           
           - **Backend**: \`${{ needs.build-backend.outputs.image }}\`
           - **Frontend**: \`${{ needs.build-frontend.outputs.image }}\`
+          - **Log Viewer**: \`${{ needs.build-log-viewer.outputs.image }}\`
           
           ## Usage
           
@@ -213,6 +287,8 @@ jobs:
               image: ${{ needs.build-backend.outputs.image }}
             frontend:
               image: ${{ needs.build-frontend.outputs.image }}
+            log-viewer:
+              image: ${{ needs.build-log-viewer.outputs.image }}
           \`\`\`
           
           ## Available Tags
@@ -240,13 +316,13 @@ jobs:
           else
             echo "=== Changes to commit ==="
             git diff --staged --name-only
-            git commit -m "Update Docker images to backend:${{ needs.build-backend.outputs.version }}, frontend:${{ needs.build-frontend.outputs.version }}" || echo "Commit failed"
+            git commit -m "Update Docker images to backend:${{ needs.build-backend.outputs.version }}, frontend:${{ needs.build-frontend.outputs.version }}, log-viewer:${{ needs.build-log-viewer.outputs.version }}" || echo "Commit failed"
             git push || echo "Push failed"
           fi
 
   security-scan:
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend]
+    needs: [build-backend, build-frontend, build-log-viewer]
     if: github.event_name != 'pull_request' && false  # Temporarily disabled until images exist
     permissions:
       security-events: write
@@ -256,6 +332,7 @@ jobs:
         image: 
           - ${{ needs.build-backend.outputs.image }}
           - ${{ needs.build-frontend.outputs.image }}
+          - ${{ needs.build-log-viewer.outputs.image }}
     
     steps:
       - name: Run Trivy vulnerability scanner
