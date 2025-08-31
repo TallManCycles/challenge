@@ -177,10 +177,17 @@ To manage your notification preferences, visit your settings page.{quoteText}
 
     public async Task SendChallengeCompletionNotificationAsync(string toEmail, string challengeTitle, string participantName, int position, int totalParticipants, List<(string Username, string FullName, decimal Total, int Position)> leaderboard)
     {
+        // Validate leaderboard parameter
+        if (leaderboard == null || leaderboard.Count == 0)
+        {
+            _logger.LogWarning("Attempted to send challenge completion notification with empty leaderboard for challenge '{ChallengeTitle}' to {Email}.", challengeTitle, toEmail);
+            return;
+        }
+
         var subject = $"Challenge Complete: {challengeTitle} - Final Results!";
         
         // Determine winner and user's position-specific messaging
-        var winner = leaderboard.FirstOrDefault();
+        var winner = leaderboard.First(); // Safe to use .First() after validation
         var isWinner = position == 1;
         var positionSuffix = GetPositionSuffix(position);
         

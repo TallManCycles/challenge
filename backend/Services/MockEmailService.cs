@@ -52,18 +52,22 @@ public class MockEmailService : IEmailService
 
     public async Task SendChallengeCompletionNotificationAsync(string toEmail, string challengeTitle, string participantName, int position, int totalParticipants, List<(string Username, string FullName, decimal Total, int Position)> leaderboard)
     {
-        var winner = leaderboard.FirstOrDefault();
+        // Validate leaderboard parameter
+        if (leaderboard == null || leaderboard.Count == 0)
+        {
+            _logger.LogWarning("Mock: Attempted to send challenge completion notification with empty leaderboard for challenge '{ChallengeTitle}' to {Email}.", challengeTitle, toEmail);
+            return;
+        }
+
+        var winner = leaderboard.First(); // Safe to use .First() after validation
         var positionSuffix = GetPositionSuffix(position);
         
         _logger.LogInformation("Mock Challenge Completion Notification - To: {Email}, Challenge: {Challenge}, Participant: {Participant}, Position: {Position}{Suffix} of {Total}", 
             toEmail, challengeTitle, participantName, position, positionSuffix, totalParticipants);
-        
-        if (winner.Username != null)
-        {
-            _logger.LogInformation("Mock Challenge Winner: {WinnerName} (@{WinnerUsername}) with {WinnerTotal:F2}", 
-                winner.FullName, winner.Username, winner.Total);
-        }
-        
+
+        _logger.LogInformation("Mock Challenge Winner: {WinnerName} (@{WinnerUsername}) with {WinnerTotal:F2}", 
+            winner.FullName, winner.Username, winner.Total);
+
         _logger.LogInformation("Mock Leaderboard (Top {Count}):", Math.Min(5, leaderboard.Count));
         foreach (var participant in leaderboard.Take(5))
         {
