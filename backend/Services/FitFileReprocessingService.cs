@@ -15,11 +15,13 @@ public class FitFileReprocessingService : IFitFileReprocessingService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<FitFileReprocessingService> _logger;
+    private readonly IChallengeNotificationService _notificationService;
 
-    public FitFileReprocessingService(ApplicationDbContext context, ILogger<FitFileReprocessingService> logger)
+    public FitFileReprocessingService(ApplicationDbContext context, ILogger<FitFileReprocessingService> logger, IChallengeNotificationService notificationService)
     {
         _context = context;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task<int> ReprocessUnprocessedFitFilesAsync(int userId)
@@ -57,7 +59,20 @@ public class FitFileReprocessingService : IFitFileReprocessingService
                     await ProcessChallengesForFitFileAsync(user, fitFileActivity);
                     
                     // Create Activity record
-                    await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                    var activity = await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                    
+                    // Send email notifications to other challenge participants
+                    if (activity != null)
+                    {
+                        try
+                        {
+                            await _notificationService.SendActivityNotificationsForAllChallengesAsync(activity.Id);
+                        }
+                        catch (Exception notificationEx)
+                        {
+                            _logger.LogError(notificationEx, "Failed to send notifications for reprocessed FitFile activity {activityId}", activity.Id);
+                        }
+                    }
                     
                     processedCount++;
                     
@@ -121,7 +136,20 @@ public class FitFileReprocessingService : IFitFileReprocessingService
                         await ProcessChallengesForFitFileAsync(user, fitFileActivity);
                         
                         // Create Activity record
-                        await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                        var activity = await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                        
+                        // Send email notifications to other challenge participants
+                        if (activity != null)
+                        {
+                            try
+                            {
+                                await _notificationService.SendActivityNotificationsForAllChallengesAsync(activity.Id);
+                            }
+                            catch (Exception notificationEx)
+                            {
+                                _logger.LogError(notificationEx, "Failed to send notifications for bulk reprocessed FitFile activity {activityId}", activity.Id);
+                            }
+                        }
                         
                         processedCount++;
                         
@@ -190,7 +218,20 @@ public class FitFileReprocessingService : IFitFileReprocessingService
                         await ProcessChallengesForFitFileAsync(user, fitFileActivity);
                         
                         // Create Activity record
-                        await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                        var activity = await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                        
+                        // Send email notifications to other challenge participants
+                        if (activity != null)
+                        {
+                            try
+                            {
+                                await _notificationService.SendActivityNotificationsForAllChallengesAsync(activity.Id);
+                            }
+                            catch (Exception notificationEx)
+                            {
+                                _logger.LogError(notificationEx, "Failed to send notifications for UserNotFound reprocessed FitFile activity {activityId}", activity.Id);
+                            }
+                        }
                         
                         processedCount++;
                         
@@ -303,7 +344,7 @@ public class FitFileReprocessingService : IFitFileReprocessingService
         }
     }
 
-    private async Task CreateActivityFromFitFileAsync(User user, FitFileActivity fitFileActivity)
+    private async Task<backend.Models.Activity?> CreateActivityFromFitFileAsync(User user, FitFileActivity fitFileActivity)
     {
         try
         {
@@ -315,7 +356,7 @@ public class FitFileReprocessingService : IFitFileReprocessingService
             if (existingActivity != null)
             {
                 _logger.LogInformation("Activity already exists for FitFile: {fileName}, skipping creation", fitFileActivity.FileName);
-                return;
+                return existingActivity;
             }
 
             // Create Activity record from FitFileActivity
@@ -350,6 +391,8 @@ public class FitFileReprocessingService : IFitFileReprocessingService
 
             _logger.LogInformation("Created Activity record from FitFile: {fileName} for user {userId}", 
                 fitFileActivity.FileName, user.Id);
+
+            return activity;
         }
         catch (Exception ex)
         {

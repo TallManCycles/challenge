@@ -158,4 +158,141 @@ public class ChallengeNotificationService : IChallengeNotificationService
             _logger.LogError(ex, "Error processing activity notifications for activity {ActivityId}", activityId);
         }
     }
+
+    public async Task SendChallengeCompletionNotificationsAsync(int challengeId)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        try
+        {
+            var challenge = await context.Challenges
+                .Include(c => c.Participants)
+                    .ThenInclude(p => p.User)
+                .FirstOrDefaultAsync(c => c.Id == challengeId);
+
+            if (challenge == null)
+            {
+                _logger.LogWarning("Challenge {ChallengeId} not found for completion notification", challengeId);
+                return;
+            }
+
+            if (challenge.EndDate > DateTime.UtcNow)
+            {
+                _logger.LogWarning("Challenge {ChallengeId} has not yet finished (EndDate: {EndDate})", challengeId, challenge.EndDate);
+                return;
+            }
+
+            var participants = challenge.Participants
+                .Where(p => p.User.EmailNotificationsEnabled)
+                .ToList();
+
+            if (!participants.Any())
+            {
+                _logger.LogInformation("No participants with email notifications enabled for challenge {ChallengeId}", challengeId);
+                return;
+            }
+
+            // Generate leaderboard - ordered by CurrentTotal descending
+            var leaderboard = participants
+                .OrderByDescending(p => p.CurrentTotal)
+                .Select((p, index) => new
+                {
+                    Username = p.User.Username,
+                    FullName = p.User.FullName,
+                    Total = p.CurrentTotal,
+                    Position = index + 1,
+                    User = p.User
+                })
+                .ToList();
+
+            // Determine winner (first place)
+            var winner = leaderboard.FirstOrDefault();
+            
+            if (winner == null)
+            {
+                _logger.LogWarning("No winner found for challenge {ChallengeId}", challengeId);
+                return;
+            }
+
+            // Create leaderboard data for email
+            var leaderboardData = leaderboard
+                .Select(l => (l.Username, l.FullName ?? "Unknown", l.Total, l.Position))
+                .ToList();
+
+            // Send emails to all participants
+            var emailTasks = leaderboard.Select(async participant =>
+            {
+                try
+                {
+                    await _emailService.SendChallengeCompletionNotificationAsync(
+                        participant.User.Email,
+                        challenge.Title,
+                        participant.FullName ?? "Unknown",
+                        participant.Position,
+                        leaderboard.Count,
+                        leaderboardData
+                    );
+
+                    _logger.LogInformation("Challenge completion notification sent to {Email} for challenge {ChallengeId}", 
+                        participant.User.Email, challengeId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send challenge completion notification to {Email} for challenge {ChallengeId}", 
+                        participant.User.Email, challengeId);
+                }
+            });
+
+            await Task.WhenAll(emailTasks);
+
+            _logger.LogInformation("Completed sending challenge completion notifications for challenge {ChallengeId}. " +
+                "Winner: {WinnerName} ({WinnerTotal}). Sent to {Count} participants.", 
+                challengeId, winner.FullName, winner.Total, leaderboard.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending challenge completion notifications for challenge {ChallengeId}", challengeId);
+        }
+    }
+
+    public async Task CheckAndNotifyCompletedChallengesAsync()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        using var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        try
+        {
+            // Find challenges that ended at midnight today (checking challenges that ended in the last 24 hours)
+            var yesterday = DateTime.UtcNow.Date.AddDays(-1);
+            var today = DateTime.UtcNow.Date;
+
+            var completedChallenges = await context.Challenges
+                .Where(c => c.IsActive && 
+                           c.EndDate >= yesterday && 
+                           c.EndDate < today)
+                .ToListAsync();
+
+            if (!completedChallenges.Any())
+            {
+                _logger.LogInformation("No challenges completed in the last 24 hours");
+                return;
+            }
+
+            _logger.LogInformation("Found {Count} completed challenges to process", completedChallenges.Count);
+
+            var notificationTasks = completedChallenges.Select(challenge =>
+                SendChallengeCompletionNotificationsAsync(challenge.Id)
+            );
+
+            await Task.WhenAll(notificationTasks);
+
+            _logger.LogInformation("Completed processing challenge completion notifications for {Count} challenges", 
+                completedChallenges.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking and notifying completed challenges");
+        }
+    }
 }

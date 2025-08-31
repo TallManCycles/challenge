@@ -15,11 +15,13 @@ public class FitFileProcessingService : IFitFileProcessingService
 {
     private readonly ApplicationDbContext _context;
     private readonly ILogger<FitFileProcessingService> _logger;
+    private readonly IChallengeNotificationService _notificationService;
 
-    public FitFileProcessingService(ApplicationDbContext context, ILogger<FitFileProcessingService> logger)
+    public FitFileProcessingService(ApplicationDbContext context, ILogger<FitFileProcessingService> logger, IChallengeNotificationService notificationService)
     {
         _context = context;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     public async Task<bool> ProcessFitFileAsync(byte[] fileContent, string fileName)
@@ -106,7 +108,20 @@ public class FitFileProcessingService : IFitFileProcessingService
             if (user != null && status == FitFileProcessingStatus.Processed)
             {
                 await ProcessChallengesForFitFileAsync(user, fitFileActivity);
-                await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                var activity = await CreateActivityFromFitFileAsync(user, fitFileActivity);
+                
+                // Send email notifications to other challenge participants
+                if (activity != null)
+                {
+                    try
+                    {
+                        await _notificationService.SendActivityNotificationsForAllChallengesAsync(activity.Id);
+                    }
+                    catch (Exception notificationEx)
+                    {
+                        _logger.LogError(notificationEx, "Failed to send notifications for FitFile activity {activityId}", activity.Id);
+                    }
+                }
             }
 
             return true;
@@ -450,7 +465,7 @@ public class FitFileProcessingService : IFitFileProcessingService
         }
     }
 
-    private async Task CreateActivityFromFitFileAsync(User user, FitFileActivity fitFileActivity)
+    private async Task<backend.Models.Activity?> CreateActivityFromFitFileAsync(User user, FitFileActivity fitFileActivity)
     {
         try
         {
@@ -463,7 +478,7 @@ public class FitFileProcessingService : IFitFileProcessingService
             if (existingActivity != null)
             {
                 _logger.LogInformation("Activity already exists for FitFile: {fileName}, skipping creation", fitFileActivity.FileName);
-                return;
+                return existingActivity;
             }
 
             // Create Activity record from FitFileActivity
@@ -498,6 +513,8 @@ public class FitFileProcessingService : IFitFileProcessingService
 
             _logger.LogInformation("Created Activity record from FitFile: {fileName} for user {userId}", 
                 fitFileActivity.FileName, user.Id);
+
+            return activity;
         }
         catch (Exception ex)
         {

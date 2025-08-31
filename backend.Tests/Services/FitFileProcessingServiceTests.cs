@@ -14,6 +14,7 @@ public class FitFileProcessingServiceTests
 {
     private ApplicationDbContext _context;
     private Mock<ILogger<FitFileProcessingService>> _mockLogger;
+    private Mock<IChallengeNotificationService> _mockNotificationService;
     private FitFileProcessingService _fitFileProcessingService;
     // test file is located in /test-fit-file/20250810_095144_2024-12-02-05-14-35.fit
     private readonly string _testFitFilePath = Path.Combine(TestContext.CurrentContext.TestDirectory, "test-fit-file", "20250810_095144_2024-12-02-05-14-35.fit");
@@ -28,7 +29,8 @@ public class FitFileProcessingServiceTests
         
         _context = new ApplicationDbContext(options);
         _mockLogger = new Mock<ILogger<FitFileProcessingService>>();
-        _fitFileProcessingService = new FitFileProcessingService(_context, _mockLogger.Object);
+        _mockNotificationService = new Mock<IChallengeNotificationService>();
+        _fitFileProcessingService = new FitFileProcessingService(_context, _mockLogger.Object, _mockNotificationService.Object);
     }
 
     [Test]
