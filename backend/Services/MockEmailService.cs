@@ -50,6 +50,48 @@ public class MockEmailService : IEmailService
         await SendEmailAsync(toEmail, subject, message);
     }
 
+    public async Task SendChallengeCompletionNotificationAsync(string toEmail, string challengeTitle, string participantName, int position, int totalParticipants, List<(string Username, string FullName, decimal Total, int Position)> leaderboard)
+    {
+        var winner = leaderboard.FirstOrDefault();
+        var positionSuffix = GetPositionSuffix(position);
+        
+        _logger.LogInformation("Mock Challenge Completion Notification - To: {Email}, Challenge: {Challenge}, Participant: {Participant}, Position: {Position}{Suffix} of {Total}", 
+            toEmail, challengeTitle, participantName, position, positionSuffix, totalParticipants);
+        
+        if (winner.Username != null)
+        {
+            _logger.LogInformation("Mock Challenge Winner: {WinnerName} (@{WinnerUsername}) with {WinnerTotal:F2}", 
+                winner.FullName, winner.Username, winner.Total);
+        }
+        
+        _logger.LogInformation("Mock Leaderboard (Top {Count}):", Math.Min(5, leaderboard.Count));
+        foreach (var participant in leaderboard.Take(5))
+        {
+            _logger.LogInformation("  {Position}{Suffix}: {FullName} (@{Username}) - {Total:F2}", 
+                participant.Position, GetPositionSuffix(participant.Position), participant.FullName, participant.Username, participant.Total);
+        }
+        
+        // Get a random cyclist quote
+        Quote? quote = null;
+        try
+        {
+            quote = await _quoteService.GetRandomQuoteAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to retrieve quote for challenge completion email notification");
+        }
+        
+        var quoteText = quote != null ? $" | Quote: \"{quote.Text}\" - {quote.Author}" : "";
+        
+        var subject = $"Challenge Complete: {challengeTitle} - Final Results!";
+        var isWinner = position == 1;
+        var message = $"Challenge {challengeTitle} finished! {participantName} finished {position}{positionSuffix} of {totalParticipants}. " +
+                     $"{(isWinner ? "🎉 WINNER! 🥇" : "Great job!")} Winner: {winner.FullName} ({winner.Total:F2}){quoteText}";
+        
+        await SendEmailAsync(toEmail, subject, message);
+    }
+
     private static string GetUnitForChallengeType(string challengeType)
     {
         return challengeType.ToLower() switch
@@ -58,6 +100,21 @@ public class MockEmailService : IEmailService
             "elevation" => "m", 
             "time" => "hours",
             _ => "units"
+        };
+    }
+
+    private static string GetPositionSuffix(int position)
+    {
+        return position switch
+        {
+            1 => "st",
+            2 => "nd",
+            3 => "rd",
+            _ when position >= 11 && position <= 13 => "th",
+            _ when position % 10 == 1 => "st",
+            _ when position % 10 == 2 => "nd",
+            _ when position % 10 == 3 => "rd",
+            _ => "th"
         };
     }
 }

@@ -76,6 +76,7 @@ builder.Services.AddHostedService(x => x.GetRequiredService<FitFileBackgroundSer
 // Add background services
 builder.Services.AddHostedService<GarminWebhookBackgroundService>();
 builder.Services.AddHostedService<GarminDailyActivityBackgroundService>();
+builder.Services.AddHostedService<ChallengeCompletionBackgroundService>();
 
 // Add Controllers
 builder.Services.AddControllers();

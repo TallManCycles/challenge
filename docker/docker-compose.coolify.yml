@@ -78,6 +78,30 @@ services:
       retries: 3
       start_period: 5s
 
+  log-viewer:
+    build:
+      context: ./log-viewer
+      dockerfile: Dockerfile
+    container_name: ${LOG_VIEWER_CONTAINER_NAME:-garmin-challenge-log-viewer}
+    environment:
+      - NODE_ENV=production
+      - LOG_DIR=/logs
+      - PORT=8888
+    volumes:
+      - backend_logs:/logs:ro  # Read-only access to backend logs
+    ports:
+      - "${LOG_VIEWER_PORT:-8888}:8888"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "const http = require('http'); const req = http.request({hostname: 'localhost', port: 8888, path: '/health', timeout: 2000}, (res) => process.exit(res.statusCode === 200 ? 0 : 1)); req.on('error', () => process.exit(1)); req.end();"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 volumes:
   postgres_data:
   backend_logs:
