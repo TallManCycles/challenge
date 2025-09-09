@@ -369,12 +369,22 @@ public class AuthController : ControllerBase
                 uploadsDir = persistentUploadsDir;
                 await _logger.LogInfoAsync($"Using persistent uploads directory: {uploadsDir}", "Auth");
             }
-            catch
+            catch (Exception ex)
             {
-                // Fall back to wwwroot location
-                Directory.CreateDirectory(wwwrootUploadsDir);
-                uploadsDir = wwwrootUploadsDir;
-                await _logger.LogInfoAsync($"Using wwwroot uploads directory: {uploadsDir}", "Auth");
+                await _logger.LogWarningAsync($"Could not use persistent uploads directory '{persistentUploadsDir}'. Error: {ex.GetType().Name}: {ex.Message}", "Auth");
+                
+                try
+                {
+                    // Fall back to wwwroot location
+                    Directory.CreateDirectory(wwwrootUploadsDir);
+                    uploadsDir = wwwrootUploadsDir;
+                    await _logger.LogInfoAsync($"Successfully fell back to wwwroot uploads directory: {uploadsDir}", "Auth");
+                }
+                catch (Exception wwwEx)
+                {
+                    await _logger.LogErrorAsync($"Critical error: Cannot create uploads directory in either location. Persistent dir error: {ex.Message}, wwwroot dir error: {wwwEx.Message}", wwwEx, "Auth");
+                    throw new InvalidOperationException("Unable to create uploads directory. Check file system permissions and disk space.", wwwEx);
+                }
             }
 
             // Generate unique filename
@@ -389,28 +399,69 @@ public class AuthController : ControllerBase
                 var oldPersistentPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profile-photos", oldFileName);
                 var oldWwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos", oldFileName);
                 
-                if (System.IO.File.Exists(oldPersistentPath))
+                try
                 {
-                    System.IO.File.Delete(oldPersistentPath);
+                    if (System.IO.File.Exists(oldPersistentPath))
+                    {
+                        System.IO.File.Delete(oldPersistentPath);
+                        await _logger.LogInfoAsync($"Deleted old profile photo from persistent storage: {oldFileName}", "Auth");
+                    }
+                    else if (System.IO.File.Exists(oldWwwrootPath))
+                    {
+                        System.IO.File.Delete(oldWwwrootPath);
+                        await _logger.LogInfoAsync($"Deleted old profile photo from wwwroot: {oldFileName}", "Auth");
+                    }
                 }
-                else if (System.IO.File.Exists(oldWwwrootPath))
+                catch (Exception ex)
                 {
-                    System.IO.File.Delete(oldWwwrootPath);
+                    await _logger.LogWarningAsync($"Failed to delete old profile photo '{oldFileName}' for user {user.Username}. Error: {ex.GetType().Name}: {ex.Message}", "Auth");
+                    // Continue with upload even if old file deletion fails
                 }
             }
 
             // Save new file
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            try
             {
-                await photo.CopyToAsync(stream);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await photo.CopyToAsync(stream);
+                }
+                await _logger.LogInfoAsync($"Successfully saved profile photo: {fileName}", "Auth");
+            }
+            catch (Exception ex)
+            {
+                await _logger.LogErrorAsync($"Failed to save profile photo file '{fileName}' to '{filePath}'. Error: {ex.GetType().Name}: {ex.Message}", ex, "Auth");
+                throw new InvalidOperationException($"Failed to save profile photo. Error: {ex.Message}", ex);
             }
 
             // Update user profile
             user.ProfilePhotoUrl = $"/uploads/profile-photos/{fileName}";
             user.UpdatedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            await _logger.LogInfoAsync($"Profile photo updated for user: {user.Username}", "Auth");
+            
+            try
+            {
+                await _context.SaveChangesAsync();
+                await _logger.LogInfoAsync($"Profile photo updated for user: {user.Username}", "Auth");
+            }
+            catch (Exception ex)
+            {
+                // If database update fails, try to clean up the uploaded file
+                try
+                {
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        System.IO.File.Delete(filePath);
+                        await _logger.LogInfoAsync($"Cleaned up uploaded file after database error: {fileName}", "Auth");
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    await _logger.LogWarningAsync($"Failed to cleanup file after database error. File: {fileName}, Cleanup Error: {cleanupEx.Message}", "Auth");
+                }
+                
+                await _logger.LogErrorAsync($"Failed to update user profile photo in database for user: {user.Username}. Error: {ex.GetType().Name}: {ex.Message}", ex, "Auth");
+                throw new InvalidOperationException($"Failed to save profile photo metadata. Error: {ex.Message}", ex);
+            }
 
             return Ok(new
             {
@@ -418,10 +469,25 @@ public class AuthController : ControllerBase
                 profilePhotoUrl = user.ProfilePhotoUrl
             });
         }
+        catch (InvalidOperationException ex)
+        {
+            // These are expected errors we've already logged
+            return StatusCode(500, new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            await _logger.LogErrorAsync($"Permission denied while uploading profile photo for user {userId}", ex, "Auth");
+            return StatusCode(500, new { message = "Permission denied. Check file system permissions." });
+        }
+        catch (IOException ex)
+        {
+            await _logger.LogErrorAsync($"File I/O error during profile photo upload for user {userId}", ex, "Auth");
+            return StatusCode(500, new { message = "File system error. Check disk space and permissions." });
+        }
         catch (Exception ex)
         {
-            await _logger.LogErrorAsync("Failed to upload profile photo", ex, "Auth");
-            return StatusCode(500, new { message = "Failed to upload profile photo" });
+            await _logger.LogErrorAsync($"Unexpected error during profile photo upload for user {userId}", ex, "Auth");
+            return StatusCode(500, new { message = "An unexpected error occurred while uploading the profile photo." });
         }
     }
 
@@ -448,19 +514,27 @@ public class AuthController : ControllerBase
             var persistentPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profile-photos", fileName);
             var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos", fileName);
             
-            if (System.IO.File.Exists(persistentPath))
+            try
             {
-                System.IO.File.Delete(persistentPath);
-                await _logger.LogInfoAsync($"Deleted profile photo from persistent storage: {persistentPath}", "Auth");
+                if (System.IO.File.Exists(persistentPath))
+                {
+                    System.IO.File.Delete(persistentPath);
+                    await _logger.LogInfoAsync($"Deleted profile photo from persistent storage: {persistentPath}", "Auth");
+                }
+                else if (System.IO.File.Exists(wwwrootPath))
+                {
+                    System.IO.File.Delete(wwwrootPath);
+                    await _logger.LogInfoAsync($"Deleted profile photo from wwwroot: {wwwrootPath}", "Auth");
+                }
+                else
+                {
+                    await _logger.LogWarningAsync($"Profile photo file not found in either location for user: {user.Username}. Expected locations: {persistentPath} or {wwwrootPath}", "Auth");
+                }
             }
-            else if (System.IO.File.Exists(wwwrootPath))
+            catch (Exception ex)
             {
-                System.IO.File.Delete(wwwrootPath);
-                await _logger.LogInfoAsync($"Deleted profile photo from wwwroot: {wwwrootPath}", "Auth");
-            }
-            else
-            {
-                await _logger.LogWarningAsync($"Profile photo file not found in either location for user: {user.Username}", "Auth");
+                await _logger.LogErrorAsync($"Failed to delete profile photo file '{fileName}' for user {user.Username}. Error: {ex.GetType().Name}: {ex.Message}", ex, "Auth");
+                // Continue to update database even if file deletion fails
             }
 
             // Update user profile
