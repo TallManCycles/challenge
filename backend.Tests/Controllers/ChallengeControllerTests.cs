@@ -600,6 +600,33 @@ public class ChallengeControllerTests
         };
 
         _context.ChallengeParticipants.AddRange(participant1, participant2);
+        
+        // Add activities that match the expected totals
+        var activity1 = new Activity
+        {
+            UserId = _testUser.Id,
+            GarminActivityId = "garmin-test1",
+            ActivityName = "Test Activity 1",
+            Distance = 50.5m, // Matches participant1.CurrentTotal
+            ElevationGain = 0m,
+            MovingTime = 1800,
+            ActivityDate = DateTime.UtcNow.AddDays(-2),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var activity2 = new Activity
+        {
+            UserId = _otherUser.Id,
+            GarminActivityId = "garmin-test2",
+            ActivityName = "Test Activity 2",
+            Distance = 75.2m, // Matches participant2.CurrentTotal
+            ElevationGain = 0m,
+            MovingTime = 3600,
+            ActivityDate = DateTime.UtcNow.AddDays(-1),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Activities.AddRange(activity1, activity2);
         await _context.SaveChangesAsync();
 
         var result = await _controller.GetChallengeLeaderboard(challenge.Id);
