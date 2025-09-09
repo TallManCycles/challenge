@@ -245,7 +245,8 @@ public class AuthController : ControllerBase
             createdAt = user.CreatedAt,
             garminConnected = !string.IsNullOrEmpty(user.GarminUserId),
             emailNotificationsEnabled = user.EmailNotificationsEnabled,
-            zwiftUserId = user.ZwiftUserId
+            zwiftUserId = user.ZwiftUserId,
+            profilePhotoUrl = user.ProfilePhotoUrl
         });
     }
 
@@ -318,11 +319,133 @@ public class AuthController : ControllerBase
             fullName = user.FullName,
             emailNotificationsEnabled = user.EmailNotificationsEnabled,
             zwiftUserId = user.ZwiftUserId,
+            profilePhotoUrl = user.ProfilePhotoUrl,
             message = "Profile updated successfully",
             reprocessedFitFiles = reprocessedCount
         });
     }
 
+    [HttpPost("profile-photo")]
+    [Authorize]
+    public async Task<IActionResult> UploadProfilePhoto(IFormFile photo)
+    {
+        // Get current user from JWT token
+        var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
+            return Unauthorized();
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        if (photo == null || photo.Length == 0)
+            return BadRequest(new { message = "No photo file provided" });
+
+        // Validate file type
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!allowedTypes.Contains(photo.ContentType.ToLower()))
+        {
+            return BadRequest(new { message = "Only JPEG, PNG, and WebP images are allowed" });
+        }
+
+        // Validate file size (5MB max)
+        const int maxSizeBytes = 5 * 1024 * 1024;
+        if (photo.Length > maxSizeBytes)
+        {
+            return BadRequest(new { message = "File size must be less than 5MB" });
+        }
+
+        try
+        {
+            // Create uploads directory if it doesn't exist
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos");
+            Directory.CreateDirectory(uploadsDir);
+
+            // Generate unique filename
+            var extension = Path.GetExtension(photo.FileName).ToLower();
+            var fileName = $"{userId}_{Guid.NewGuid()}{extension}";
+            var filePath = Path.Combine(uploadsDir, fileName);
+
+            // Delete old profile photo if exists
+            if (!string.IsNullOrEmpty(user.ProfilePhotoUrl))
+            {
+                var oldFileName = Path.GetFileName(user.ProfilePhotoUrl);
+                var oldFilePath = Path.Combine(uploadsDir, oldFileName);
+                if (System.IO.File.Exists(oldFilePath))
+                {
+                    System.IO.File.Delete(oldFilePath);
+                }
+            }
+
+            // Save new file
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await photo.CopyToAsync(stream);
+            }
+
+            // Update user profile
+            user.ProfilePhotoUrl = $"/uploads/profile-photos/{fileName}";
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            await _logger.LogInfoAsync($"Profile photo updated for user: {user.Username}", "Auth");
+
+            return Ok(new
+            {
+                message = "Profile photo updated successfully",
+                profilePhotoUrl = user.ProfilePhotoUrl
+            });
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogErrorAsync("Failed to upload profile photo", ex, "Auth");
+            return StatusCode(500, new { message = "Failed to upload profile photo" });
+        }
+    }
+
+    [HttpDelete("profile-photo")]
+    [Authorize]
+    public async Task<IActionResult> DeleteProfilePhoto()
+    {
+        // Get current user from JWT token
+        var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
+            return Unauthorized();
+
+        var user = await _context.Users.FindAsync(userId);
+        if (user == null)
+            return NotFound();
+
+        if (string.IsNullOrEmpty(user.ProfilePhotoUrl))
+            return BadRequest(new { message = "No profile photo to delete" });
+
+        try
+        {
+            // Delete file from disk
+            var fileName = Path.GetFileName(user.ProfilePhotoUrl);
+            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos");
+            var filePath = Path.Combine(uploadsDir, fileName);
+            
+            if (System.IO.File.Exists(filePath))
+            {
+                System.IO.File.Delete(filePath);
+            }
+
+            // Update user profile
+            user.ProfilePhotoUrl = null;
+            user.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            await _logger.LogInfoAsync($"Profile photo deleted for user: {user.Username}", "Auth");
+
+            return Ok(new { message = "Profile photo deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogErrorAsync("Failed to delete profile photo", ex, "Auth");
+            return StatusCode(500, new { message = "Failed to delete profile photo" });
+        }
+    }
 
     private string HashPassword(string password)
     {

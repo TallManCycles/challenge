@@ -92,6 +92,7 @@ public class ChallengeController : ControllerBase
                     UserId = p.UserId,
                     Username = p.User.Username,
                     FullName = p.User.FullName,
+                    ProfilePhotoUrl = p.User.ProfilePhotoUrl,
                     JoinedAt = p.JoinedAt.ToUniversalTime(),
                     CurrentTotal = p.CurrentTotal,
                     LastActivityDate = p.LastActivityDate.HasValue ? p.LastActivityDate.Value.ToUniversalTime() : null,
@@ -365,6 +366,7 @@ public class ChallengeController : ControllerBase
                 UserId = a.UserId,
                 Username = a.User.Username,
                 FullName = a.User.FullName,
+                ProfilePhotoUrl = a.User.ProfilePhotoUrl,
                 ActivityName = a.ActivityName,
                 Distance = a.Distance,
                 ElevationGain = a.ElevationGain,
@@ -445,6 +447,7 @@ public class ChallengeController : ControllerBase
                 UserId = participant.UserId,
                 Username = participant.User.Username,
                 FullName = participant.User.FullName,
+                ProfilePhotoUrl = participant.User.ProfilePhotoUrl,
                 CurrentTotal = currentTotal,
                 IsCurrentUser = participant.UserId == currentUserId,
                 LastActivityDate = lastActivityDate?.ToUniversalTime()
@@ -549,6 +552,7 @@ public class ChallengeController : ControllerBase
                 UserId = participant.UserId,
                 Username = participant.User.Username,
                 FullName = participant.User.FullName,
+                ProfilePhotoUrl = participant.User.ProfilePhotoUrl,
                 IsCurrentUser = participant.UserId == currentUserId,
                 DailyProgress = dailyProgress
             });

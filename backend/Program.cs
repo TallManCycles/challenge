@@ -191,6 +191,9 @@ if (app.Environment.IsDevelopment() || !string.IsNullOrEmpty(app.Configuration["
 }
 app.UseCors("AllowFrontend");
 
+// Serve static files for profile photos
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

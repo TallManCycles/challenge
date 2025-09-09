@@ -66,6 +66,7 @@ public class ChallengeParticipantResponse
     public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string? FullName { get; set; }
+    public string? ProfilePhotoUrl { get; set; }
     public DateTime JoinedAt { get; set; }
     public decimal CurrentTotal { get; set; }
     public DateTime? LastActivityDate { get; set; }
@@ -88,6 +89,7 @@ public class ChallengeActivityResponse
     public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string? FullName { get; set; }
+    public string? ProfilePhotoUrl { get; set; }
     public string ActivityName { get; set; } = string.Empty;
     public decimal Distance { get; set; }
     public decimal ElevationGain { get; set; }
@@ -103,6 +105,7 @@ public class ChallengeLeaderboardResponse
     public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string? FullName { get; set; }
+    public string? ProfilePhotoUrl { get; set; }
     public decimal CurrentTotal { get; set; }
     public bool IsCurrentUser { get; set; }
     public DateTime? LastActivityDate { get; set; }
@@ -123,6 +126,7 @@ public class ParticipantDailyProgress
     public int UserId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string? FullName { get; set; }
+    public string? ProfilePhotoUrl { get; set; }
     public bool IsCurrentUser { get; set; }
     public List<DailyProgressEntry> DailyProgress { get; set; } = new();
 }
