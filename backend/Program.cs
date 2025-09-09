@@ -194,6 +194,17 @@ app.UseCors("AllowFrontend");
 // Serve static files for profile photos
 app.UseStaticFiles();
 
+// Also serve uploads directory as static files if it exists outside wwwroot
+var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+if (Directory.Exists(uploadsPath))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(uploadsPath),
+        RequestPath = "/uploads"
+    });
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 

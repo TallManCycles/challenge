@@ -357,23 +357,45 @@ public class AuthController : ControllerBase
 
         try
         {
-            // Create uploads directory if it doesn't exist
-            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos");
-            Directory.CreateDirectory(uploadsDir);
+            // Create uploads directory - prefer the persistent volume location
+            var persistentUploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profile-photos");
+            var wwwrootUploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos");
+            
+            // Try persistent location first (mounted volume in production)
+            string uploadsDir;
+            try
+            {
+                Directory.CreateDirectory(persistentUploadsDir);
+                uploadsDir = persistentUploadsDir;
+                await _logger.LogInfoAsync($"Using persistent uploads directory: {uploadsDir}", "Auth");
+            }
+            catch
+            {
+                // Fall back to wwwroot location
+                Directory.CreateDirectory(wwwrootUploadsDir);
+                uploadsDir = wwwrootUploadsDir;
+                await _logger.LogInfoAsync($"Using wwwroot uploads directory: {uploadsDir}", "Auth");
+            }
 
             // Generate unique filename
             var extension = Path.GetExtension(photo.FileName).ToLower();
             var fileName = $"{userId}_{Guid.NewGuid()}{extension}";
             var filePath = Path.Combine(uploadsDir, fileName);
 
-            // Delete old profile photo if exists
+            // Delete old profile photo if exists - check persistent location first
             if (!string.IsNullOrEmpty(user.ProfilePhotoUrl))
             {
                 var oldFileName = Path.GetFileName(user.ProfilePhotoUrl);
-                var oldFilePath = Path.Combine(uploadsDir, oldFileName);
-                if (System.IO.File.Exists(oldFilePath))
+                var oldPersistentPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profile-photos", oldFileName);
+                var oldWwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos", oldFileName);
+                
+                if (System.IO.File.Exists(oldPersistentPath))
                 {
-                    System.IO.File.Delete(oldFilePath);
+                    System.IO.File.Delete(oldPersistentPath);
+                }
+                else if (System.IO.File.Exists(oldWwwrootPath))
+                {
+                    System.IO.File.Delete(oldWwwrootPath);
                 }
             }
 
@@ -421,14 +443,24 @@ public class AuthController : ControllerBase
 
         try
         {
-            // Delete file from disk
+            // Delete file from disk - check persistent location first
             var fileName = Path.GetFileName(user.ProfilePhotoUrl);
-            var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos");
-            var filePath = Path.Combine(uploadsDir, fileName);
+            var persistentPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads", "profile-photos", fileName);
+            var wwwrootPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profile-photos", fileName);
             
-            if (System.IO.File.Exists(filePath))
+            if (System.IO.File.Exists(persistentPath))
             {
-                System.IO.File.Delete(filePath);
+                System.IO.File.Delete(persistentPath);
+                await _logger.LogInfoAsync($"Deleted profile photo from persistent storage: {persistentPath}", "Auth");
+            }
+            else if (System.IO.File.Exists(wwwrootPath))
+            {
+                System.IO.File.Delete(wwwrootPath);
+                await _logger.LogInfoAsync($"Deleted profile photo from wwwroot: {wwwrootPath}", "Auth");
+            }
+            else
+            {
+                await _logger.LogWarningAsync($"Profile photo file not found in either location for user: {user.Username}", "Auth");
             }
 
             // Update user profile
