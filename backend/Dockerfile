@@ -9,6 +9,9 @@ RUN dotnet restore
 # Copy everything else and build
 COPY . ./
 RUN dotnet publish -c Release -o /app/publish
+
+# Ensure wwwroot directory exists in the publish output
+RUN mkdir -p /app/publish/wwwroot
  
 # Use the runtime image for the final stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
@@ -23,8 +26,13 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # Copy the published app
 COPY --from=build /app/publish ./
 
-# Create logs and uploads directories and set ownership
-RUN mkdir -p /app/logs /app/uploads/fit-files && chown -R appuser:appuser /app
+# Create logs and uploads directories with proper permissions
+RUN mkdir -p /app/logs \
+             /app/uploads/fit-files \
+             /app/uploads/profile-photos \
+             /app/wwwroot/uploads/profile-photos && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app/uploads /app/wwwroot/uploads
 USER appuser
 
 # Expose port
