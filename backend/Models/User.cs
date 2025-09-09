@@ -36,6 +36,8 @@ public class User
     
     public string? ZwiftUserId { get; set; }
 
+    public string? ProfilePhotoUrl { get; set; }
+
     public ICollection<Challenge> CreatedChallenges { get; set; } = new List<Challenge>();
     
     public ICollection<ChallengeParticipant> ChallengeParticipations { get; set; } = new List<ChallengeParticipant>();

@@ -21,7 +21,12 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
             </svg>
           </button>
-          <div class="w-8 h-8 bg-gray-600 rounded-full"></div>
+          <UserAvatar 
+            :photo-url="currentUser?.profilePhotoUrl"
+            :username="currentUser?.username"
+            :full-name="currentUser?.fullName"
+            size="sm"
+          />
         </div>
       </div>
     </header>
@@ -70,7 +75,12 @@
             </div>
             <div v-else class="space-y-4">
               <div v-for="activity in recentActivities" :key="activity.id" class="flex items-center space-x-4 p-3 bg-gray-750 rounded-lg">
-                <div class="w-10 h-10 bg-gray-600 rounded-full flex-shrink-0"></div>
+                <UserAvatar 
+                  :photo-url="activity.profilePhotoUrl"
+                  :username="activity.username"
+                  :full-name="activity.fullName"
+                  size="md"
+                />
                 <div class="flex-1">
                   <div class="flex items-center space-x-2 mb-1">
                     <span class="font-medium text-white">{{ activity.fullName || activity.username }}</span>
@@ -164,7 +174,12 @@
                     {{ participant.position }}
                   </div>
                 </div>
-                <div class="w-8 h-8 bg-gray-600 rounded-full flex-shrink-0"></div>
+                <UserAvatar 
+                  :photo-url="participant.profilePhotoUrl"
+                  :username="participant.username"
+                  :full-name="participant.fullName"
+                  size="sm"
+                />
                 <div class="flex-1">
                   <div class="font-medium text-white">
                     {{ participant.isCurrentUser ? 'You' : (participant.fullName || participant.username) }}
@@ -244,8 +259,11 @@ import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { challengeService } from '../services/challenge'
 import { activityService } from '../services/activity'
+import { authService } from '../services/auth'
 import ChallengeProgressChart from '../components/ChallengeProgressChart.vue'
+import UserAvatar from '../components/UserAvatar.vue'
 import type { ChallengeDetails, ChallengeActivity, ChallengeLeaderboard } from '../types/challenge'
+import type { User } from '../types/auth'
 
 const route = useRoute()
 const router = useRouter()
@@ -254,6 +272,7 @@ const loading = ref(true)
 const challenge = ref<ChallengeDetails | null>(null)
 const recentActivities = ref<ChallengeActivity[]>([])
 const leaderboard = ref<ChallengeLeaderboard[]>([])
+const currentUser = ref<User | null>(null)
 const likingActivity = ref<number | null>(null)
 const showLeaveConfirmation = ref(false)
 const leavingChallenge = ref(false)
@@ -475,7 +494,14 @@ const loadChallengeDetails = async () => {
   }
 }
 
-onMounted(() => {
-  loadChallengeDetails()
+onMounted(async () => {
+  await loadChallengeDetails()
+  
+  // Load current user data for avatar
+  try {
+    currentUser.value = await authService.getCurrentUser()
+  } catch (error) {
+    console.warn('Failed to load current user data:', error)
+  }
 })
 </script>

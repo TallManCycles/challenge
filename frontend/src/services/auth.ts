@@ -167,6 +167,41 @@ class AuthService {
     })
   }
 
+  async uploadProfilePhoto(formData: FormData): Promise<{ message: string; profilePhotoUrl: string }> {
+    const url = `${API_BASE_URL}/auth/profile-photo`
+
+    const config: RequestInit = {
+      method: 'POST',
+      headers: {
+        ...(this.token && { Authorization: `Bearer ${this.token}` }),
+        // Don't set Content-Type for FormData, let the browser set it with boundary
+      },
+      body: formData,
+    }
+
+    try {
+      const response = await fetch(url, config)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'An error occurred' }))
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error
+      }
+      throw new Error('Network error occurred')
+    }
+  }
+
+  async deleteProfilePhoto(): Promise<{ message: string }> {
+    return await this.makeRequest<{ message: string }>('/auth/profile-photo', {
+      method: 'DELETE',
+    })
+  }
+
   logout(): void {
     this.token = null
     localStorage.removeItem('auth_token')

@@ -124,6 +124,16 @@
             <h3 class="text-xl font-semibold text-white">Profile Information</h3>
           </div>
 
+          <!-- Profile Photo Upload -->
+          <div class="mb-8">
+            <ProfilePhotoUpload 
+              v-model="currentUser.profilePhotoUrl"
+              @uploaded="handlePhotoUploaded"
+              @deleted="handlePhotoDeleted"
+              @error="handlePhotoError"
+            />
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label for="fullName" class="block text-sm font-medium text-gray-300 mb-2">
@@ -393,9 +403,22 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { authService } from '../services/auth'
 import { garminService, type GarminOAuthStatus } from '../services/garmin'
+import ProfilePhotoUpload from '../components/ProfilePhotoUpload.vue'
+import type { User } from '../types/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+// Current user data
+const currentUser = ref<User>({
+  email: '',
+  username: '',
+  fullName: '',
+  garminConnected: false,
+  emailNotificationsEnabled: true,
+  zwiftUserId: '',
+  profilePhotoUrl: undefined
+})
 
 // Form data
 const profileForm = ref({
@@ -425,6 +448,10 @@ const isConnectingGarmin = ref(false)
 onMounted(async () => {
   try {
     const user = await authService.getCurrentUser()
+    // Update currentUser data
+    currentUser.value = { ...user }
+    
+    // Update form data
     profileForm.value.email = user.email
     profileForm.value.fullName = user.fullName || ''
     profileForm.value.emailNotificationsEnabled = user.emailNotificationsEnabled
@@ -462,6 +489,20 @@ const checkOAuthCallback = () => {
     // Clean up URL
     window.history.replaceState({}, document.title, '/settings')
   }
+}
+
+const handlePhotoUploaded = (photoUrl: string) => {
+  currentUser.value.profilePhotoUrl = photoUrl
+  showToastMessage('Profile photo updated successfully!', 'success')
+}
+
+const handlePhotoDeleted = () => {
+  currentUser.value.profilePhotoUrl = undefined
+  showToastMessage('Profile photo deleted successfully!', 'success')
+}
+
+const handlePhotoError = (message: string) => {
+  showToastMessage(message, 'error')
 }
 
 const logout = () => {

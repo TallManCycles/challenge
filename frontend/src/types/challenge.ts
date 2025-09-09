@@ -26,6 +26,7 @@ export interface ChallengeParticipant {
   userId: number
   username: string
   fullName?: string
+  profilePhotoUrl?: string
   joinedAt: string
   currentTotal: number
   lastActivityDate?: string
@@ -63,6 +64,7 @@ export interface ChallengeActivity {
   userId: number
   username: string
   fullName?: string
+  profilePhotoUrl?: string
   activityName: string
   distance: number
   elevationGain: number
@@ -77,6 +79,7 @@ export interface ChallengeLeaderboard {
   userId: number
   username: string
   fullName?: string
+  profilePhotoUrl?: string
   currentTotal: number
   isCurrentUser: boolean
   lastActivityDate?: string
@@ -92,6 +95,7 @@ export interface ParticipantDailyProgress {
   userId: number
   username: string
   fullName?: string
+  profilePhotoUrl?: string
   isCurrentUser: boolean
   dailyProgress: DailyProgressEntry[]
 }
