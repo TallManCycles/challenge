@@ -389,26 +389,72 @@ public class ChallengeController : ControllerBase
             return NotFound();
         }
         
-        // SQLite does not support expressions of type 'decimal' in ORDER BY clauses. Convert the values to a supported type, or use LINQ to Objects to order the results on the client side.
-
+        // Get all participants
         var participants = await _context.ChallengeParticipants
             .Include(cp => cp.User)
             .Where(cp => cp.ChallengeId == id)
-            .Select(cp => new ChallengeLeaderboardResponse
-            {
-                Position = 0, // Will be set below
-                UserId = cp.UserId,
-                Username = cp.User.Username,
-                FullName = cp.User.FullName,
-                CurrentTotal = cp.CurrentTotal,
-                IsCurrentUser = cp.UserId == currentUserId,
-                LastActivityDate = cp.LastActivityDate.HasValue ? cp.LastActivityDate.Value.ToUniversalTime() : null
-            })
             .ToListAsync();
 
-        var orderedParticipants = participants.OrderByDescending(cp => cp.CurrentTotal).ToList();
+        if (!participants.Any())
+        {
+            return Ok(new List<ChallengeLeaderboardResponse>());
+        }
 
-        // Set positions after retrieving from database
+        var participantUserIds = participants.Select(p => p.UserId).ToList();
+
+        // Get all activities for participants within the challenge date range
+        var activities = await _context.Activities
+            .Where(a => participantUserIds.Contains(a.UserId) && 
+                       a.ActivityDate >= challenge.StartDate && 
+                       a.ActivityDate <= challenge.EndDate)
+            .ToListAsync();
+
+        // Calculate current totals for each participant based on actual activities
+        var leaderboardEntries = new List<ChallengeLeaderboardResponse>();
+
+        foreach (var participant in participants)
+        {
+            var userActivities = activities.Where(a => a.UserId == participant.UserId).ToList();
+            decimal currentTotal = 0;
+            DateTime? lastActivityDate = null;
+
+            foreach (var activity in userActivities)
+            {
+                switch (challenge.ChallengeType)
+                {
+                    case ChallengeType.Distance:
+                        currentTotal += (decimal)activity.DistanceKm;
+                        break;
+                    case ChallengeType.Elevation:
+                        currentTotal += (decimal)activity.ElevationGainM;
+                        break;
+                    case ChallengeType.Time:
+                        currentTotal += activity.DurationSeconds / 3600m; // Convert seconds to hours
+                        break;
+                }
+
+                if (lastActivityDate == null || activity.ActivityDate > lastActivityDate)
+                {
+                    lastActivityDate = activity.ActivityDate;
+                }
+            }
+
+            leaderboardEntries.Add(new ChallengeLeaderboardResponse
+            {
+                Position = 0, // Will be set below
+                UserId = participant.UserId,
+                Username = participant.User.Username,
+                FullName = participant.User.FullName,
+                CurrentTotal = currentTotal,
+                IsCurrentUser = participant.UserId == currentUserId,
+                LastActivityDate = lastActivityDate?.ToUniversalTime()
+            });
+        }
+
+        // Order by current total and set positions
+        var orderedParticipants = leaderboardEntries.OrderByDescending(cp => cp.CurrentTotal).ToList();
+
+        // Set positions after ordering
         for (int i = 0; i < orderedParticipants.Count; i++)
         {
             orderedParticipants[i].Position = i + 1;
