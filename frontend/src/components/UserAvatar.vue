@@ -81,7 +81,7 @@ const initials = computed(() => {
 
 const getPhotoUrl = computed(() => {
   return (url: string | null) => {
-    if (!url) return null
+    if (!url) return undefined
     if (url.startsWith('http')) return url
     const baseUrl = import.meta.env.VITE_APP_API_ENDPOINT || 'http://localhost:5000'
     return `${baseUrl}${url}`
