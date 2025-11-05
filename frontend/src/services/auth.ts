@@ -46,6 +46,10 @@ class AuthService {
         localStorage.removeItem('refresh_token_expiry')
         localStorage.removeItem('user_data')
       }
+    } else if (this.token === null) {
+      // No refresh token and access token is invalid (expired or not present)
+      // Clean up user data to prevent information leakage
+      localStorage.removeItem('user_data')
     }
   }
 
