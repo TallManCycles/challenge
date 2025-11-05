@@ -1,6 +1,7 @@
 export interface LoginRequest {
   email: string
   password: string
+  rememberMe?: boolean
 }
 
 export interface RegisterRequest {
@@ -16,6 +17,8 @@ export interface AuthResponse {
   username: string
   token: string
   tokenExpiry: string
+  refreshToken?: string
+  refreshTokenExpiry?: string
 }
 
 export interface User {

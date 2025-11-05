@@ -14,6 +14,8 @@ const API_BASE_URL = `${import.meta.env.VITE_APP_API_ENDPOINT || 'http://localho
 
 class AuthService {
   private token: string | null = null
+  private refreshToken: string | null = null
+  private refreshTokenExpiry: Date | null = null
 
   constructor() {
     // Load token from localStorage on initialization
@@ -22,13 +24,28 @@ class AuthService {
 
   private loadTokenFromStorage(): void {
     const storedToken = localStorage.getItem('auth_token')
+    const storedRefreshToken = localStorage.getItem('refresh_token')
+    const storedRefreshExpiry = localStorage.getItem('refresh_token_expiry')
+
     if (storedToken && !this.isTokenExpired(storedToken)) {
       this.token = storedToken
     } else if (storedToken) {
       // Token is expired, clean up
       localStorage.removeItem('auth_token')
-      localStorage.removeItem('user_data')
       this.token = null
+    }
+
+    if (storedRefreshToken && storedRefreshExpiry) {
+      const expiryDate = new Date(storedRefreshExpiry)
+      if (expiryDate > new Date()) {
+        this.refreshToken = storedRefreshToken
+        this.refreshTokenExpiry = expiryDate
+      } else {
+        // Refresh token expired, clean up
+        localStorage.removeItem('refresh_token')
+        localStorage.removeItem('refresh_token_expiry')
+        localStorage.removeItem('user_data')
+      }
     }
   }
 
@@ -113,6 +130,14 @@ class AuthService {
       email: response.email,
       username: response.username,
     }))
+
+    // Store refresh token if provided
+    if (response.refreshToken && response.refreshTokenExpiry) {
+      this.refreshToken = response.refreshToken
+      this.refreshTokenExpiry = new Date(response.refreshTokenExpiry)
+      localStorage.setItem('refresh_token', response.refreshToken)
+      localStorage.setItem('refresh_token_expiry', response.refreshTokenExpiry)
+    }
 
     return response
   }
@@ -202,9 +227,67 @@ class AuthService {
     })
   }
 
+  async refreshAccessToken(): Promise<boolean> {
+    if (!this.refreshToken || !this.refreshTokenExpiry) {
+      return false
+    }
+
+    // Check if refresh token is expired
+    if (this.refreshTokenExpiry <= new Date()) {
+      this.logout()
+      return false
+    }
+
+    try {
+      const url = `${API_BASE_URL}/auth/refresh`
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.refreshToken),
+      })
+
+      if (!response.ok) {
+        this.logout()
+        return false
+      }
+
+      const data: AuthResponse = await response.json()
+
+      // Update tokens
+      this.token = data.token
+      localStorage.setItem('auth_token', data.token)
+
+      return true
+    } catch {
+      this.logout()
+      return false
+    }
+  }
+
+  async ensureAuthenticated(): Promise<boolean> {
+    // If we have a valid token, we're good
+    if (this.token && !this.isTokenExpired(this.token)) {
+      return true
+    }
+
+    // If token is expired but we have a refresh token, try to refresh
+    if (this.refreshToken && this.refreshTokenExpiry && this.refreshTokenExpiry > new Date()) {
+      return await this.refreshAccessToken()
+    }
+
+    // No valid authentication
+    return false
+  }
+
   logout(): void {
     this.token = null
+    this.refreshToken = null
+    this.refreshTokenExpiry = null
     localStorage.removeItem('auth_token')
+    localStorage.removeItem('refresh_token')
+    localStorage.removeItem('refresh_token_expiry')
     localStorage.removeItem('user_data')
   }
 
@@ -215,7 +298,13 @@ class AuthService {
 
     // Check if token is expired
     if (this.isTokenExpired(this.token)) {
-      // If token is expired, clean up and return false
+      // If token is expired but we have a refresh token, we're still authenticated
+      // The app should call ensureAuthenticated() before making API calls
+      if (this.refreshToken && this.refreshTokenExpiry && this.refreshTokenExpiry > new Date()) {
+        return true
+      }
+
+      // No refresh token or it's expired, clean up and return false
       this.logout()
       return false
     }
@@ -232,7 +321,7 @@ class AuthService {
     return userData ? JSON.parse(userData) : null
   }
 
-  refreshToken(): void {
+  reloadTokenFromStorage(): void {
     this.loadTokenFromStorage()
   }
 }

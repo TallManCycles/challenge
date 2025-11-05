@@ -277,7 +277,8 @@ const handleSubmit = async () => {
   try {
     await authStore.login({
       email: form.value.email,
-      password: form.value.password
+      password: form.value.password,
+      rememberMe: form.value.rememberMe
     })
 
     // Redirect to dashboard on successful login

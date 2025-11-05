@@ -122,6 +122,41 @@ public class AuthController : ControllerBase
 
             // Generate JWT token
             var token = GenerateJwtToken(user);
+            var tokenExpiry = DateTime.UtcNow.AddHours(1);
+
+            // Generate refresh token if RememberMe is checked
+            string? refreshToken = null;
+            DateTime? refreshTokenExpiry = null;
+
+            if (request.RememberMe)
+            {
+                // Revoke any existing refresh tokens for this user
+                var existingTokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == user.Id && rt.IsActive)
+                    .ToListAsync();
+
+                foreach (var existingToken in existingTokens)
+                {
+                    existingToken.RevokedAt = DateTime.UtcNow;
+                }
+
+                // Create new refresh token
+                refreshToken = GenerateRefreshToken();
+                refreshTokenExpiry = DateTime.UtcNow.AddDays(30);
+
+                var refreshTokenEntity = new RefreshToken
+                {
+                    Token = refreshToken,
+                    UserId = user.Id,
+                    ExpiresAt = refreshTokenExpiry.Value,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.RefreshTokens.Add(refreshTokenEntity);
+                await _context.SaveChangesAsync();
+
+                await _logger.LogInfoAsync($"Refresh token generated for user: {user.Username}", "Auth");
+            }
 
             var response = new AuthResponse
             {
@@ -129,7 +164,9 @@ public class AuthController : ControllerBase
                 Email = user.Email,
                 Username = user.Username,
                 Token = token,
-                TokenExpiry = DateTime.UtcNow.AddHours(24)
+                TokenExpiry = tokenExpiry,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiry = refreshTokenExpiry
             };
 
             return Ok(response);
@@ -138,6 +175,55 @@ public class AuthController : ControllerBase
         {
             await _logger.LogErrorAsync("Login failed", ex, "Auth");
             return BadRequest(new { message = "Invalid credentials" });
+        }
+    }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] string refreshToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return BadRequest(new { message = "Refresh token is required" });
+            }
+
+            // Find the refresh token
+            var storedToken = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+
+            if (storedToken == null || !storedToken.IsActive)
+            {
+                await _logger.LogWarningAsync($"Invalid or expired refresh token attempt", "Auth");
+                return Unauthorized(new { message = "Invalid or expired refresh token" });
+            }
+
+            var user = storedToken.User;
+
+            // Generate new access token
+            var newAccessToken = GenerateJwtToken(user);
+            var tokenExpiry = DateTime.UtcNow.AddHours(1);
+
+            await _logger.LogInfoAsync($"Token refreshed for user: {user.Username}", "Auth");
+
+            var response = new AuthResponse
+            {
+                UserId = user.Id,
+                Email = user.Email,
+                Username = user.Username,
+                Token = newAccessToken,
+                TokenExpiry = tokenExpiry,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiry = storedToken.ExpiresAt
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogErrorAsync("Token refresh failed", ex, "Auth");
+            return BadRequest(new { message = "Token refresh failed" });
         }
     }
 
@@ -532,12 +618,20 @@ public class AuthController : ControllerBase
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Username)
             }),
-            Expires = DateTime.UtcNow.AddHours(72),
+            Expires = DateTime.UtcNow.AddHours(1),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    private string GenerateRefreshToken()
+    {
+        var randomBytes = new byte[64];
+        using var rng = RandomNumberGenerator.Create();
+        rng.GetBytes(randomBytes);
+        return Convert.ToBase64String(randomBytes);
     }
 }
