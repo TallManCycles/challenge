@@ -259,6 +259,14 @@ class AuthService {
       this.token = data.token
       localStorage.setItem('auth_token', data.token)
 
+      // Update refresh token if provided (token rotation)
+      if (data.refreshToken && data.refreshTokenExpiry) {
+        this.refreshToken = data.refreshToken
+        this.refreshTokenExpiry = new Date(data.refreshTokenExpiry)
+        localStorage.setItem('refresh_token', data.refreshToken)
+        localStorage.setItem('refresh_token_expiry', data.refreshTokenExpiry)
+      }
+
       return true
     } catch {
       this.logout()

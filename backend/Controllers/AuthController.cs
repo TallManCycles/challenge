@@ -201,9 +201,26 @@ public class AuthController : ControllerBase
 
             var user = storedToken.User;
 
+            // For enhanced security, revoke the used refresh token and issue a new one (token rotation)
+            storedToken.RevokedAt = DateTime.UtcNow;
+
             // Generate new access token
             var newAccessToken = GenerateJwtToken(user);
             var tokenExpiry = DateTime.UtcNow.AddHours(1);
+
+            // Create new refresh token
+            var newRefreshTokenString = GenerateRefreshToken();
+            var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(30);
+
+            var newRefreshTokenEntity = new RefreshToken
+            {
+                Token = newRefreshTokenString,
+                UserId = user.Id,
+                ExpiresAt = newRefreshTokenExpiry,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.RefreshTokens.Add(newRefreshTokenEntity);
+            await _context.SaveChangesAsync();
 
             await _logger.LogInfoAsync($"Token refreshed for user: {user.Username}", "Auth");
 
@@ -214,8 +231,8 @@ public class AuthController : ControllerBase
                 Username = user.Username,
                 Token = newAccessToken,
                 TokenExpiry = tokenExpiry,
-                RefreshToken = refreshToken,
-                RefreshTokenExpiry = storedToken.ExpiresAt
+                RefreshToken = newRefreshTokenString,
+                RefreshTokenExpiry = newRefreshTokenExpiry
             };
 
             return Ok(response);
