@@ -152,12 +152,16 @@ try
     
     Console.WriteLine("Database migration completed successfully.");
     
-    // Seed only in development
+    // Seed quotes in all environments (they are application data, not test data)
+    var seeder = new DatabaseSeeder(context);
+    await seeder.SeedQuotesIfNeededAsync();
+    Console.WriteLine("Quote seeding completed.");
+
+    // Seed test data only in development
     if (app.Environment.IsDevelopment())
     {
-        var seeder = new DatabaseSeeder(context);
         await seeder.SeedAsync();
-        Console.WriteLine("Database seeding completed.");
+        Console.WriteLine("Test data seeding completed.");
     }
     
     // Now try to initialize file logging service

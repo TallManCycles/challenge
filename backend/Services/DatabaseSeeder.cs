@@ -24,7 +24,7 @@ public class DatabaseSeeder
         if (await _context.Users.AnyAsync())
         {
             // Still seed quotes if they don't exist
-            await SeedQuotesIfNeeded();
+            await SeedQuotesIfNeededAsync();
             return;
         }
         
@@ -177,10 +177,10 @@ public class DatabaseSeeder
         await _context.SaveChangesAsync();
 
         // Seed quotes
-        await SeedQuotesIfNeeded();
+        await SeedQuotesIfNeededAsync();
     }
 
-    private async Task SeedQuotesIfNeeded()
+    public async Task SeedQuotesIfNeededAsync()
     {
         // Check if quotes already exist
         var existingCount = await _context.Quotes.CountAsync();
@@ -190,7 +190,7 @@ public class DatabaseSeeder
         }
 
         var quotes = GetQuotesData();
-        
+
         _context.Quotes.AddRange(quotes);
         await _context.SaveChangesAsync();
     }
