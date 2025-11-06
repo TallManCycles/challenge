@@ -115,7 +115,8 @@ describe('LoginView', () => {
     // Verify login was called with correct credentials
     expect(authStore.login).toHaveBeenCalledWith({
       email: 'test@example.com',
-      password: 'password123'
+      password: 'password123',
+      rememberMe: false
     })
 
     // Verify redirect to dashboard
@@ -142,7 +143,8 @@ describe('LoginView', () => {
     // Verify error is displayed
     expect(authStore.login).toHaveBeenCalledWith({
       email: 'invalid@example.com',
-      password: 'wrongpassword'
+      password: 'wrongpassword',
+      rememberMe: false
     })
   })
 
@@ -285,7 +287,8 @@ describe('LoginView', () => {
       // The component passes the value as-is, trimming could be handled by the server
       expect(authStore.login).toHaveBeenCalledWith({
         email: 'test@example.com',
-        password: ''
+        password: '',
+        rememberMe: false
       })
     })
   })

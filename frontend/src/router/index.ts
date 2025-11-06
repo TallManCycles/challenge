@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { authService } from '../services/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -16,7 +17,7 @@ const router = createRouter({
     },
     {
       path: '/register',
-      name: 'Register', 
+      name: 'Register',
       component: () => import('../views/RegisterView.vue'),
       meta: { requiresGuest: true }
     },
@@ -71,16 +72,29 @@ const router = createRouter({
 })
 
 // Navigation guards
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
-  
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next('/dashboard')
-  } else {
-    next()
+
+  // For protected routes, try to refresh token if needed before checking auth
+  if (to.meta.requiresAuth) {
+    const isAuthenticated = await authService.ensureAuthenticated()
+
+    // Update store state after potential refresh using proper action
+    authStore.setAuthenticated(isAuthenticated)
+
+    if (!isAuthenticated) {
+      next('/login')
+      return
+    }
   }
+
+  // For guest-only routes, check if already authenticated
+  if (to.meta.requiresGuest && authStore.isAuthenticated) {
+    next('/dashboard')
+    return
+  }
+
+  next()
 })
 
 export default router

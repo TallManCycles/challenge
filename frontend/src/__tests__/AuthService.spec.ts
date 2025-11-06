@@ -36,7 +36,7 @@ describe('AuthService', () => {
     localStorageMock.removeItem.mockImplementation(() => {})
     // Reset authService state
     authService['token'] = null
-    authService.refreshToken()
+    authService.reloadTokenFromStorage()
   })
 
   afterEach(() => {
@@ -232,7 +232,7 @@ describe('AuthService', () => {
       })
       
       // Force reload from localStorage since beforeEach clears the token
-      authService.refreshToken()
+      authService.reloadTokenFromStorage()
 
       expect(authService.isAuthenticated()).toBe(true)
       expect(authService.getToken()).toBe(mockToken)
@@ -250,7 +250,7 @@ describe('AuthService', () => {
       vi.spyOn(Date, 'now').mockReturnValue(mockNow)
 
       // Force reload from localStorage to trigger token expiry check
-      authService.refreshToken()
+      authService.reloadTokenFromStorage()
       
       expect(authService.isAuthenticated()).toBe(false)
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token')
@@ -267,7 +267,7 @@ describe('AuthService', () => {
       })
 
       // Force reload from localStorage to trigger token validation
-      authService.refreshToken()
+      authService.reloadTokenFromStorage()
       
       expect(authService.isAuthenticated()).toBe(false)
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token')
@@ -281,7 +281,7 @@ describe('AuthService', () => {
       })
 
       // Force reload from localStorage to trigger token validation
-      authService.refreshToken()
+      authService.reloadTokenFromStorage()
       
       expect(authService.isAuthenticated()).toBe(true)
     })
@@ -330,7 +330,7 @@ describe('AuthService', () => {
         json: () => Promise.resolve({ message: 'Unauthorized' })
       })
 
-      await expect(authService.getCurrentUser()).rejects.toThrow('Unauthorized')
+      await expect(authService.getCurrentUser()).rejects.toThrow('Session expired. Please login again.')
     })
   })
 
@@ -476,20 +476,20 @@ describe('AuthService', () => {
   })
 
   describe('Logout functionality', () => {
-    it('clears token and localStorage on logout', () => {
+    it('clears token and localStorage on logout', async () => {
       authService['token'] = 'some-token'
-      
-      authService.logout()
+
+      await authService.logout()
 
       expect(authService.getToken()).toBeNull()
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token')
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('user_data')
     })
 
-    it('handles logout when no token exists', () => {
+    it('handles logout when no token exists', async () => {
       authService['token'] = null
-      
-      authService.logout()
+
+      await authService.logout()
 
       expect(authService.getToken()).toBeNull()
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token')
@@ -540,7 +540,7 @@ describe('AuthService', () => {
         return null
       })
 
-      authService.refreshToken()
+      authService.reloadTokenFromStorage()
 
       expect(authService.getToken()).toBe(newToken)
     })
@@ -625,7 +625,7 @@ describe('AuthService', () => {
       })
       // Reset and reload to force token validation
       authService['token'] = null
-      authService.refreshToken()
+      authService.reloadTokenFromStorage()
       expect(authService.isAuthenticated()).toBe(true)
 
       // Test past expiry (invalid) - create new token with expired time
@@ -637,7 +637,7 @@ describe('AuthService', () => {
       })
       // Reset and reload to force token validation
       authService['token'] = null
-      authService.refreshToken()
+      authService.reloadTokenFromStorage()
       expect(authService.isAuthenticated()).toBe(false)
 
       global.atob = originalAtob

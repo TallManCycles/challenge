@@ -76,8 +76,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function logout() {
-    authService.logout()
+  async function logout() {
+    await authService.logout()
     user.value = null
     error.value = null
     isAuthenticated.value = false
@@ -87,11 +87,15 @@ export const useAuthStore = defineStore('auth', () => {
     error.value = null
   }
 
+  function setAuthenticated(value: boolean) {
+    isAuthenticated.value = value
+  }
+
   // Initialize user data if authenticated
   async function initialize() {
     // Sync authentication state with service
     isAuthenticated.value = authService.isAuthenticated()
-    
+
     if (isAuthenticated.value && !user.value) {
       try {
         await getCurrentUser()
@@ -112,6 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
     getCurrentUser,
     logout,
     clearError,
+    setAuthenticated,
     initialize,
   }
 })

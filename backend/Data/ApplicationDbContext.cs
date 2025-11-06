@@ -19,6 +19,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<GarminWebhookPayload> GarminWebhookPayloads { get; set; }
     public DbSet<FitFileActivity> FitFileActivities { get; set; }
     public DbSet<Quote> Quotes { get; set; }
+    public DbSet<RefreshToken> RefreshTokens { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -209,10 +210,28 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Author);
             entity.HasIndex(e => e.Category);
             entity.HasIndex(e => e.IsActive);
-            
+
             entity.Property(e => e.Text).HasMaxLength(1000);
             entity.Property(e => e.Author).HasMaxLength(200);
             entity.Property(e => e.Category).HasMaxLength(100);
+        });
+
+        // RefreshToken entity configuration
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).UseIdentityColumn();
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasIndex(e => e.UserId);
+            // Composite index for efficient cleanup queries
+            entity.HasIndex(e => new { e.UserId, e.RevokedAt, e.ExpiresAt });
+
+            entity.Property(e => e.Token).HasMaxLength(500);
+
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

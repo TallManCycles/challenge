@@ -21,6 +21,13 @@ public class AuthController : ControllerBase
     private readonly IFileLoggingService _logger;
     private readonly IFitFileReprocessingService _fitFileReprocessingService;
 
+    // Token configuration constants
+    private const int ACCESS_TOKEN_EXPIRY_HOURS = 1;
+    private const int REFRESH_TOKEN_EXPIRY_DAYS = 30;
+    private const int TOKEN_CLEANUP_THRESHOLD_DAYS = 7;
+    private const int BCRYPT_WORK_FACTOR = 12;
+    private const int REFRESH_TOKEN_BYTES = 64;
+
     public AuthController(ApplicationDbContext context, IConfiguration configuration, IFileLoggingService logger, IFitFileReprocessingService fitFileReprocessingService)
     {
         _context = context;
@@ -122,6 +129,47 @@ public class AuthController : ControllerBase
 
             // Generate JWT token
             var token = GenerateJwtToken(user);
+            var tokenExpiry = DateTime.UtcNow.AddHours(ACCESS_TOKEN_EXPIRY_HOURS);
+
+            // Generate refresh token if RememberMe is checked
+            string? refreshToken = null;
+            DateTime? refreshTokenExpiry = null;
+
+            if (request.RememberMe)
+            {
+                // Revoke any existing active refresh tokens for this user
+                var existingTokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == user.Id && rt.RevokedAt == null && rt.ExpiresAt > DateTime.UtcNow)
+                    .ToListAsync();
+
+                foreach (var existingToken in existingTokens)
+                {
+                    existingToken.RevokedAt = DateTime.UtcNow;
+                }
+
+                // Clean up old revoked or expired tokens
+                await CleanupOldRefreshTokensAsync(user.Id);
+
+                // Create new refresh token
+                refreshToken = GenerateRefreshToken();
+                refreshTokenExpiry = DateTime.UtcNow.AddDays(REFRESH_TOKEN_EXPIRY_DAYS);
+
+                // Hash the refresh token before storing (security best practice)
+                var hashedToken = BCrypt.Net.BCrypt.HashPassword(refreshToken, BCRYPT_WORK_FACTOR);
+
+                var refreshTokenEntity = new RefreshToken
+                {
+                    Token = hashedToken,
+                    UserId = user.Id,
+                    ExpiresAt = refreshTokenExpiry.Value,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.RefreshTokens.Add(refreshTokenEntity);
+                await _context.SaveChangesAsync();
+
+                await _logger.LogInfoAsync($"Refresh token generated for user: {user.Username}", "Auth");
+            }
 
             var response = new AuthResponse
             {
@@ -129,7 +177,9 @@ public class AuthController : ControllerBase
                 Email = user.Email,
                 Username = user.Username,
                 Token = token,
-                TokenExpiry = DateTime.UtcNow.AddHours(24)
+                TokenExpiry = tokenExpiry,
+                RefreshToken = refreshToken,
+                RefreshTokenExpiry = refreshTokenExpiry
             };
 
             return Ok(response);
@@ -138,6 +188,135 @@ public class AuthController : ControllerBase
         {
             await _logger.LogErrorAsync("Login failed", ex, "Auth");
             return BadRequest(new { message = "Invalid credentials" });
+        }
+    }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] string refreshToken)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken))
+            {
+                return BadRequest(new { message = "Refresh token is required" });
+            }
+
+            // Get all active refresh tokens (not revoked and not expired)
+            // We need to verify the hash, so we can't do a direct lookup
+            var activeTokens = await _context.RefreshTokens
+                .Include(rt => rt.User)
+                .Where(rt => rt.RevokedAt == null && rt.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync();
+
+            // Find the matching token by verifying the hash
+            RefreshToken? storedToken = null;
+            foreach (var token in activeTokens)
+            {
+                try
+                {
+                    if (BCrypt.Net.BCrypt.Verify(refreshToken, token.Token))
+                    {
+                        storedToken = token;
+                        break;
+                    }
+                }
+                catch
+                {
+                    // Invalid hash format, skip this token
+                    continue;
+                }
+            }
+
+            if (storedToken == null)
+            {
+                await _logger.LogWarningAsync($"Invalid refresh token attempt", "Auth");
+                return Unauthorized(new { message = "Invalid refresh token" });
+            }
+
+            var user = storedToken.User;
+
+            // For enhanced security, revoke the used refresh token and issue a new one (token rotation)
+            storedToken.RevokedAt = DateTime.UtcNow;
+
+            // Clean up old revoked or expired tokens
+            await CleanupOldRefreshTokensAsync(user.Id);
+
+            // Generate new access token
+            var newAccessToken = GenerateJwtToken(user);
+            var tokenExpiry = DateTime.UtcNow.AddHours(ACCESS_TOKEN_EXPIRY_HOURS);
+
+            // Create new refresh token
+            var newRefreshTokenString = GenerateRefreshToken();
+            var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(REFRESH_TOKEN_EXPIRY_DAYS);
+
+            // Hash the new refresh token before storing
+            var hashedToken = BCrypt.Net.BCrypt.HashPassword(newRefreshTokenString, BCRYPT_WORK_FACTOR);
+
+            var newRefreshTokenEntity = new RefreshToken
+            {
+                Token = hashedToken,
+                UserId = user.Id,
+                ExpiresAt = newRefreshTokenExpiry,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.RefreshTokens.Add(newRefreshTokenEntity);
+            await _context.SaveChangesAsync();
+
+            await _logger.LogInfoAsync($"Token refreshed for user: {user.Username}", "Auth");
+
+            var response = new AuthResponse
+            {
+                UserId = user.Id,
+                Email = user.Email,
+                Username = user.Username,
+                Token = newAccessToken,
+                TokenExpiry = tokenExpiry,
+                RefreshToken = newRefreshTokenString,
+                RefreshTokenExpiry = newRefreshTokenExpiry
+            };
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogErrorAsync("Token refresh failed", ex, "Auth");
+            return Unauthorized(new { message = "Invalid refresh token" });
+        }
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout()
+    {
+        try
+        {
+            // Get current user from JWT token
+            var userIdClaim = User?.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userIdClaim == null || !int.TryParse(userIdClaim, out int userId))
+                return Unauthorized();
+
+            // Revoke all active refresh tokens for this user
+            var activeTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == userId && rt.RevokedAt == null)
+                .ToListAsync();
+
+            foreach (var token in activeTokens)
+            {
+                token.RevokedAt = DateTime.UtcNow;
+            }
+
+            if (activeTokens.Any())
+            {
+                await _context.SaveChangesAsync();
+                await _logger.LogInfoAsync($"Revoked {activeTokens.Count} refresh tokens on logout for user ID: {userId}", "Auth");
+            }
+
+            return Ok(new { message = "Logged out successfully" });
+        }
+        catch (Exception ex)
+        {
+            await _logger.LogErrorAsync("Logout failed", ex, "Auth");
+            return BadRequest(new { message = "Logout failed" });
         }
     }
 
@@ -532,12 +711,43 @@ public class AuthController : ControllerBase
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Name, user.Username)
             }),
-            Expires = DateTime.UtcNow.AddHours(72),
+            Expires = DateTime.UtcNow.AddHours(ACCESS_TOKEN_EXPIRY_HOURS),
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    private string GenerateRefreshToken()
+    {
+        try
+        {
+            var randomBytes = new byte[REFRESH_TOKEN_BYTES];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomBytes);
+            return Convert.ToBase64String(randomBytes);
+        }
+        catch (CryptographicException ex)
+        {
+            _logger.LogErrorAsync("Failed to generate refresh token", ex, "Auth").Wait();
+            throw;
+        }
+    }
+
+    private async Task CleanupOldRefreshTokensAsync(int userId)
+    {
+        var cleanupDate = DateTime.UtcNow.AddDays(-TOKEN_CLEANUP_THRESHOLD_DAYS);
+        var oldTokens = await _context.RefreshTokens
+            .Where(rt => rt.UserId == userId &&
+                        (rt.RevokedAt < cleanupDate || rt.ExpiresAt < cleanupDate))
+            .ToListAsync();
+
+        if (oldTokens.Any())
+        {
+            _context.RefreshTokens.RemoveRange(oldTokens);
+            await _logger.LogInfoAsync($"Cleaned up {oldTokens.Count} old refresh tokens for user ID: {userId}", "Auth");
+        }
     }
 }

@@ -8,13 +8,15 @@ import type {
   UpdateChallengeRequest,
   JoinChallengeRequest
 } from '../types/challenge'
+import { authService } from './auth'
 
 const API_BASE_URL = `${import.meta.env.VITE_APP_API_ENDPOINT || 'http://localhost:5000'}/api`
 
 class ChallengeService {
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry: boolean = false
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
     const token = localStorage.getItem('auth_token')
@@ -33,6 +35,19 @@ class ChallengeService {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'An error occurred' }))
+
+        // Handle 401 Unauthorized - try to refresh token and retry
+        if (response.status === 401 && !isRetry) {
+          const refreshSuccessful = await authService.refreshAccessToken()
+          if (refreshSuccessful) {
+            // Retry the request with the new token
+            return await this.makeRequest<T>(endpoint, options, true)
+          } else {
+            // Refresh failed, throw authentication error
+            throw new Error('Session expired. Please login again.')
+          }
+        }
+
         throw new Error(error.message || `HTTP error! status: ${response.status}`)
       }
 
