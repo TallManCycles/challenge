@@ -67,7 +67,7 @@ describe('AuthStore', () => {
     expect(authStore.error).toBeNull()
   })
 
-  it('updates isAuthenticated state on logout', () => {
+  it('updates isAuthenticated state on logout', async () => {
     const authStore = useAuthStore()
 
     // Set initial authenticated state
@@ -81,7 +81,7 @@ describe('AuthStore', () => {
     }
 
     // Logout
-    authStore.logout()
+    await authStore.logout()
 
     expect(authStore.isAuthenticated).toBe(false)
     expect(authStore.user).toBeNull()
@@ -466,9 +466,9 @@ describe('AuthStore', () => {
   })
 
   describe('State consistency', () => {
-    it('maintains consistent state on logout', () => {
+    it('maintains consistent state on logout', async () => {
       const authStore = useAuthStore()
-      
+
       // Set up authenticated state
       authStore.isAuthenticated = true
       authStore.user = {
@@ -480,7 +480,7 @@ describe('AuthStore', () => {
       }
       authStore.error = 'Some error'
 
-      authStore.logout()
+      await authStore.logout()
 
       expect(authStore.isAuthenticated).toBe(false)
       expect(authStore.user).toBeNull()

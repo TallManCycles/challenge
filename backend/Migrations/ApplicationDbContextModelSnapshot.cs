@@ -631,6 +631,8 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
+                    b.HasIndex("UserId", "RevokedAt", "ExpiresAt");
+
                     b.ToTable("RefreshTokens");
                 });
 

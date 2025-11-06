@@ -223,6 +223,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Id).UseIdentityColumn();
             entity.HasIndex(e => e.Token).IsUnique();
             entity.HasIndex(e => e.UserId);
+            // Composite index for efficient cleanup queries
+            entity.HasIndex(e => new { e.UserId, e.RevokedAt, e.ExpiresAt });
 
             entity.Property(e => e.Token).HasMaxLength(500);
 

@@ -476,20 +476,20 @@ describe('AuthService', () => {
   })
 
   describe('Logout functionality', () => {
-    it('clears token and localStorage on logout', () => {
+    it('clears token and localStorage on logout', async () => {
       authService['token'] = 'some-token'
-      
-      authService.logout()
+
+      await authService.logout()
 
       expect(authService.getToken()).toBeNull()
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token')
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('user_data')
     })
 
-    it('handles logout when no token exists', () => {
+    it('handles logout when no token exists', async () => {
       authService['token'] = null
-      
-      authService.logout()
+
+      await authService.logout()
 
       expect(authService.getToken()).toBeNull()
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('auth_token')

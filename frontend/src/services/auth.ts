@@ -264,7 +264,6 @@ class AuthService {
   async refreshAccessToken(): Promise<boolean> {
     // If already refreshing, return the existing promise
     if (this.isRefreshing && this.refreshPromise) {
-      console.log('Token refresh already in progress, waiting...')
       return this.refreshPromise
     }
 
@@ -309,10 +308,8 @@ class AuthService {
           localStorage.setItem('refresh_token_expiry', data.refreshTokenExpiry)
         }
 
-        console.log('Token refreshed successfully')
         return true
       } catch (error) {
-        console.error('Token refresh failed:', error)
         this.logout()
         return false
       } finally {
@@ -339,14 +336,24 @@ class AuthService {
     return false
   }
 
-  logout(): void {
-    this.token = null
-    this.refreshToken = null
-    this.refreshTokenExpiry = null
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('refresh_token')
-    localStorage.removeItem('refresh_token_expiry')
-    localStorage.removeItem('user_data')
+  async logout(): Promise<void> {
+    // Try to revoke tokens on the server
+    try {
+      if (this.token) {
+        await this.makeRequest('/auth/logout', { method: 'POST' })
+      }
+    } catch {
+      // Ignore errors - still clear local tokens even if server call fails
+    } finally {
+      // Clear local state
+      this.token = null
+      this.refreshToken = null
+      this.refreshTokenExpiry = null
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('refresh_token_expiry')
+      localStorage.removeItem('user_data')
+    }
   }
 
   isAuthenticated(): boolean {
