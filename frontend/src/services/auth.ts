@@ -309,7 +309,7 @@ class AuthService {
         }
 
         return true
-      } catch (error) {
+      } catch {
         this.logout()
         return false
       } finally {
