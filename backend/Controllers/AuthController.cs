@@ -130,7 +130,7 @@ public class AuthController : ControllerBase
 
             if (request.RememberMe)
             {
-                // Revoke any existing refresh tokens for this user
+                // Revoke any existing active refresh tokens for this user
                 var existingTokens = await _context.RefreshTokens
                     .Where(rt => rt.UserId == user.Id && rt.RevokedAt == null && rt.ExpiresAt > DateTime.UtcNow)
                     .ToListAsync();
@@ -140,13 +140,29 @@ public class AuthController : ControllerBase
                     existingToken.RevokedAt = DateTime.UtcNow;
                 }
 
+                // Clean up old revoked or expired tokens (older than 7 days)
+                var cleanupDate = DateTime.UtcNow.AddDays(-7);
+                var oldTokens = await _context.RefreshTokens
+                    .Where(rt => rt.UserId == user.Id &&
+                                (rt.RevokedAt < cleanupDate || rt.ExpiresAt < cleanupDate))
+                    .ToListAsync();
+
+                if (oldTokens.Any())
+                {
+                    _context.RefreshTokens.RemoveRange(oldTokens);
+                    await _logger.LogInfoAsync($"Cleaned up {oldTokens.Count} old refresh tokens for user: {user.Username}", "Auth");
+                }
+
                 // Create new refresh token
                 refreshToken = GenerateRefreshToken();
                 refreshTokenExpiry = DateTime.UtcNow.AddDays(30);
 
+                // Hash the refresh token before storing (security best practice)
+                var hashedToken = BCrypt.Net.BCrypt.HashPassword(refreshToken, 12);
+
                 var refreshTokenEntity = new RefreshToken
                 {
-                    Token = refreshToken,
+                    Token = hashedToken,
                     UserId = user.Id,
                     ExpiresAt = refreshTokenExpiry.Value,
                     CreatedAt = DateTime.UtcNow
@@ -188,21 +204,55 @@ public class AuthController : ControllerBase
                 return BadRequest(new { message = "Refresh token is required" });
             }
 
-            // Find the refresh token
-            var storedToken = await _context.RefreshTokens
+            // Get all active refresh tokens (not revoked and not expired)
+            // We need to verify the hash, so we can't do a direct lookup
+            var activeTokens = await _context.RefreshTokens
                 .Include(rt => rt.User)
-                .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+                .Where(rt => rt.RevokedAt == null && rt.ExpiresAt > DateTime.UtcNow)
+                .ToListAsync();
 
-            if (storedToken == null || !storedToken.IsActive)
+            // Find the matching token by verifying the hash
+            RefreshToken? storedToken = null;
+            foreach (var token in activeTokens)
             {
-                await _logger.LogWarningAsync($"Invalid or expired refresh token attempt", "Auth");
-                return Unauthorized(new { message = "Invalid or expired refresh token" });
+                try
+                {
+                    if (BCrypt.Net.BCrypt.Verify(refreshToken, token.Token))
+                    {
+                        storedToken = token;
+                        break;
+                    }
+                }
+                catch
+                {
+                    // Invalid hash format, skip this token
+                    continue;
+                }
+            }
+
+            if (storedToken == null)
+            {
+                await _logger.LogWarningAsync($"Invalid refresh token attempt", "Auth");
+                return Unauthorized(new { message = "Invalid refresh token" });
             }
 
             var user = storedToken.User;
 
             // For enhanced security, revoke the used refresh token and issue a new one (token rotation)
             storedToken.RevokedAt = DateTime.UtcNow;
+
+            // Clean up old revoked or expired tokens (older than 7 days)
+            var cleanupDate = DateTime.UtcNow.AddDays(-7);
+            var oldTokens = await _context.RefreshTokens
+                .Where(rt => rt.UserId == user.Id &&
+                            (rt.RevokedAt < cleanupDate || rt.ExpiresAt < cleanupDate))
+                .ToListAsync();
+
+            if (oldTokens.Any())
+            {
+                _context.RefreshTokens.RemoveRange(oldTokens);
+                await _logger.LogInfoAsync($"Cleaned up {oldTokens.Count} old refresh tokens during token refresh for user: {user.Username}", "Auth");
+            }
 
             // Generate new access token
             var newAccessToken = GenerateJwtToken(user);
@@ -212,9 +262,12 @@ public class AuthController : ControllerBase
             var newRefreshTokenString = GenerateRefreshToken();
             var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(30);
 
+            // Hash the new refresh token before storing
+            var hashedToken = BCrypt.Net.BCrypt.HashPassword(newRefreshTokenString, 12);
+
             var newRefreshTokenEntity = new RefreshToken
             {
-                Token = newRefreshTokenString,
+                Token = hashedToken,
                 UserId = user.Id,
                 ExpiresAt = newRefreshTokenExpiry,
                 CreatedAt = DateTime.UtcNow
@@ -240,7 +293,7 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             await _logger.LogErrorAsync("Token refresh failed", ex, "Auth");
-            return BadRequest(new { message = "Token refresh failed" });
+            return Unauthorized(new { message = "Invalid refresh token" });
         }
     }
 

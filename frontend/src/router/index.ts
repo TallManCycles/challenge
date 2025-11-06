@@ -79,8 +79,8 @@ router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth) {
     const isAuthenticated = await authService.ensureAuthenticated()
 
-    // Update store state after potential refresh
-    authStore.isAuthenticated = isAuthenticated
+    // Update store state after potential refresh using proper action
+    authStore.setAuthenticated(isAuthenticated)
 
     if (!isAuthenticated) {
       next('/login')
