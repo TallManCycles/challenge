@@ -132,7 +132,7 @@ public class AuthController : ControllerBase
             {
                 // Revoke any existing refresh tokens for this user
                 var existingTokens = await _context.RefreshTokens
-                    .Where(rt => rt.UserId == user.Id && rt.IsActive)
+                    .Where(rt => rt.UserId == user.Id && rt.RevokedAt == null && rt.ExpiresAt > DateTime.UtcNow)
                     .ToListAsync();
 
                 foreach (var existingToken in existingTokens)

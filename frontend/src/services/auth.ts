@@ -16,6 +16,8 @@ class AuthService {
   private token: string | null = null
   private refreshToken: string | null = null
   private refreshTokenExpiry: Date | null = null
+  private isRefreshing: boolean = false
+  private refreshPromise: Promise<boolean> | null = null
 
   constructor() {
     // Load token from localStorage on initialization
@@ -80,7 +82,8 @@ class AuthService {
 
   private async makeRequest<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry: boolean = false
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
 
@@ -98,7 +101,7 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'An error occurred' }))
-        
+
         // Handle validation errors (400 status with errors object)
         if (response.status === 400 && errorData.errors) {
           const validationError = new Error('Validation failed') as Error & {
@@ -107,7 +110,19 @@ class AuthService {
           validationError.validationErrors = errorData.errors
           throw validationError
         }
-        
+
+        // Handle 401 Unauthorized - try to refresh token and retry
+        if (response.status === 401 && !isRetry) {
+          const refreshSuccessful = await this.refreshAccessToken()
+          if (refreshSuccessful) {
+            // Retry the request with the new token
+            return await this.makeRequest<T>(endpoint, options, true)
+          } else {
+            // Refresh failed, throw authentication error
+            throw new Error('Session expired. Please login again.')
+          }
+        }
+
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
       }
 
@@ -196,7 +211,7 @@ class AuthService {
     })
   }
 
-  async uploadProfilePhoto(formData: FormData): Promise<{ message: string; profilePhotoUrl: string }> {
+  async uploadProfilePhoto(formData: FormData, isRetry: boolean = false): Promise<{ message: string; profilePhotoUrl: string }> {
     const url = `${API_BASE_URL}/auth/profile-photo`
 
     const config: RequestInit = {
@@ -213,6 +228,19 @@ class AuthService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: 'An error occurred' }))
+
+        // Handle 401 Unauthorized - try to refresh token and retry
+        if (response.status === 401 && !isRetry) {
+          const refreshSuccessful = await this.refreshAccessToken()
+          if (refreshSuccessful) {
+            // Retry the request with the new token
+            return await this.uploadProfilePhoto(formData, true)
+          } else {
+            // Refresh failed, throw authentication error
+            throw new Error('Session expired. Please login again.')
+          }
+        }
+
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
       }
 
@@ -232,6 +260,12 @@ class AuthService {
   }
 
   async refreshAccessToken(): Promise<boolean> {
+    // If already refreshing, return the existing promise
+    if (this.isRefreshing && this.refreshPromise) {
+      console.log('Token refresh already in progress, waiting...')
+      return this.refreshPromise
+    }
+
     if (!this.refreshToken || !this.refreshTokenExpiry) {
       return false
     }
@@ -242,40 +276,50 @@ class AuthService {
       return false
     }
 
-    try {
-      const url = `${API_BASE_URL}/auth/refresh`
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(this.refreshToken),
-      })
+    this.isRefreshing = true
+    this.refreshPromise = (async () => {
+      try {
+        const url = `${API_BASE_URL}/auth/refresh`
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(this.refreshToken),
+        })
 
-      if (!response.ok) {
+        if (!response.ok) {
+          this.logout()
+          return false
+        }
+
+        const data: AuthResponse = await response.json()
+
+        // Update tokens
+        this.token = data.token
+        localStorage.setItem('auth_token', data.token)
+
+        // Update refresh token if provided (token rotation)
+        if (data.refreshToken && data.refreshTokenExpiry) {
+          this.refreshToken = data.refreshToken
+          this.refreshTokenExpiry = new Date(data.refreshTokenExpiry)
+          localStorage.setItem('refresh_token', data.refreshToken)
+          localStorage.setItem('refresh_token_expiry', data.refreshTokenExpiry)
+        }
+
+        console.log('Token refreshed successfully')
+        return true
+      } catch (error) {
+        console.error('Token refresh failed:', error)
         this.logout()
         return false
+      } finally {
+        this.isRefreshing = false
+        this.refreshPromise = null
       }
+    })()
 
-      const data: AuthResponse = await response.json()
-
-      // Update tokens
-      this.token = data.token
-      localStorage.setItem('auth_token', data.token)
-
-      // Update refresh token if provided (token rotation)
-      if (data.refreshToken && data.refreshTokenExpiry) {
-        this.refreshToken = data.refreshToken
-        this.refreshTokenExpiry = new Date(data.refreshTokenExpiry)
-        localStorage.setItem('refresh_token', data.refreshToken)
-        localStorage.setItem('refresh_token_expiry', data.refreshTokenExpiry)
-      }
-
-      return true
-    } catch {
-      this.logout()
-      return false
-    }
+    return this.refreshPromise
   }
 
   async ensureAuthenticated(): Promise<boolean> {
