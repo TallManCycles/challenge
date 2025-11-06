@@ -112,7 +112,9 @@ class AuthService {
         }
 
         // Handle 401 Unauthorized - try to refresh token and retry
-        if (response.status === 401 && !isRetry) {
+        // Skip auto-refresh for login/register endpoints since user is not authenticated yet
+        const isAuthEndpoint = endpoint === '/auth/login' || endpoint === '/auth/register'
+        if (response.status === 401 && !isRetry && !isAuthEndpoint) {
           const refreshSuccessful = await this.refreshAccessToken()
           if (refreshSuccessful) {
             // Retry the request with the new token

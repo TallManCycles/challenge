@@ -330,7 +330,7 @@ describe('AuthService', () => {
         json: () => Promise.resolve({ message: 'Unauthorized' })
       })
 
-      await expect(authService.getCurrentUser()).rejects.toThrow('Unauthorized')
+      await expect(authService.getCurrentUser()).rejects.toThrow('Session expired. Please login again.')
     })
   })
 

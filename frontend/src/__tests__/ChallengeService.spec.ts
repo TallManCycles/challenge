@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { challengeService } from '../services/challenge'
 import type { Challenge, ChallengeDetails, ChallengeActivity, ChallengeLeaderboard } from '../types/challenge'
 
+// Mock authService
+vi.mock('../services/auth', () => ({
+  authService: {
+    refreshAccessToken: vi.fn().mockResolvedValue(false)
+  }
+}))
+
 // Mock fetch globally
 const mockFetch = vi.fn()
 global.fetch = mockFetch
@@ -80,7 +87,7 @@ describe('ChallengeService', () => {
       const errorResponse = { message: 'Unauthorized' }
       mockFetch.mockResolvedValueOnce(createMockResponse(errorResponse, 401))
 
-      await expect(challengeService.getChallenges()).rejects.toThrow('Unauthorized')
+      await expect(challengeService.getChallenges()).rejects.toThrow('Session expired. Please login again.')
     })
 
     it('handles network errors', async () => {
